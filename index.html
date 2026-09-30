@@ -2071,6 +2071,9 @@ document.getElementById("fileRestore").onchange = (e)=>{
   reader.onload = (ev)=>{
     try{
       const data = JSON.parse(ev.target.result);
+      if((data._schemaVersion||0) < SCHEMA_VERSION && prestamosBase().length===0){
+        toast("Este respaldo es de la versión vieja. Usá el archivo equilibra-respaldo-v4.json."); return;
+      }
       if(!confirm("Esto va a reemplazar los datos actuales por los del respaldo. ¿Continuar?")) return;
       try{ localStorage.setItem("eriFinanceData_antesDeRestaurar", JSON.stringify(state)); }catch(_){}
       window.__errorCarga = null;
