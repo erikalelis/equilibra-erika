@@ -312,9 +312,11 @@ main.content{padding:18px 16px calc(96px + env(safe-area-inset-bottom,0px)) 16px
 .reco-disclaimer{font-size:14px; color:#B9D3D8; margin-top:14px; line-height:1.4;}
 .reco-empty{font-size:16.5px; color:#CFE3E6; margin-top:10px;}
 .aviso-banner{
-  background:var(--dorado-bg); color:var(--dorado); border:1px solid rgba(184,134,59,.3);
-  border-radius:12px; padding:11px 16px; font-size:15.5px; margin-bottom:16px; line-height:1.4;
+  background:var(--petrol-100); color:var(--text-muted); border:1px solid var(--border);
+  border-radius:12px; padding:11px 16px; font-size:14.5px; margin-bottom:16px; line-height:1.4;
 }
+.respaldo-nota{font-size:13px; color:var(--text-muted); text-align:center; margin:26px 0 8px 0;}
+.respaldo-nota button{background:none; border:none; color:var(--petrol-600); font-size:13px; text-decoration:underline; padding:0 2px; cursor:pointer;}
 
 /* ---------- Tables ---------- */
 .toolbar{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px; justify-content:space-between;}
@@ -491,6 +493,10 @@ tbody tr:hover{background:var(--petrol-100);}
           <div class="empty-state" id="pendEmpty" style="display:none">Ya marcaste todo como pagado este mes.</div>
           <p style="font-size:12px;color:var(--text-muted);margin:6px 2px 0 2px">Tildá el check apenas pagás algo, y si el importe cambió (por ejemplo una cuota UVA) editalo ahí mismo antes de tildarlo.</p>
 
+          <h3 class="section-title" style="margin-top:22px">Ingresos del mes <span id="ingCount" style="font-size:12px;color:var(--text-muted);font-weight:400"></span></h3>
+          <div class="pend-list" id="ingList"></div>
+          <p style="font-size:12px;color:var(--text-muted);margin:6px 2px 0 2px">Tildá el check cuando te entre la plata. Si el importe cambió, editalo ahí mismo.</p>
+
           <div class="reco-card" id="cubrirMesCard" style="margin-top:18px"></div>
         </div>
 
@@ -506,6 +512,7 @@ tbody tr:hover{background:var(--petrol-100);}
             <div class="reco-disclaimer">Las recomendaciones son estimaciones orientativas basadas en los datos registrados y no reemplazan el asesoramiento financiero profesional.</div>
           </div>
         </div>
+        <div class="respaldo-nota" id="inicioRespaldo"></div>
       </section>
 
       <!-- MOVIMIENTOS -->
@@ -1068,7 +1075,7 @@ function renderInicio(){
   } else {
     aviso.innerHTML = "";
   }
-  aviso.innerHTML += bannerRespaldo();
+  document.getElementById("inicioRespaldo").innerHTML = notaRespaldo();
   if(state.movimientos.length===0 && state.deudas.length===0){
     aviso.innerHTML = `<div class="aviso-banner">¡Bienvenida! Esta app todavía está vacía. Si ya usabas Equilibra, tocá ⋮ y elegí <strong>Restaurar respaldo</strong> para traer tus datos. Si empezás de cero, cargá tu primer movimiento con el botón +.</div>` + aviso.innerHTML;
   }
@@ -1126,6 +1133,7 @@ function renderInicio(){
 
   renderRecomendaciones(tot, catGasto, deudaTotal, compromisos);
   renderPendientes();
+  renderIngresos();
   renderCubrirMes(tot);
 }
 function renderPendientes(){
@@ -1149,6 +1157,23 @@ function renderPendientes(){
       </div>`;
     }).join("");
   }
+}
+function renderIngresos(){
+  const ing = movsDelMes(currentMes, currentAnio).filter(m=>m.tipo==="Ingreso").sort((a,b)=> (a.fecha||"") < (b.fecha||"") ? -1 : 1);
+  const recibido = ing.filter(m=>m.estado==="Pagado").reduce((a,m)=>a+Number(m.importe||0),0);
+  const total = ing.reduce((a,m)=>a+Number(m.importe||0),0);
+  document.getElementById("ingCount").textContent = ing.length ? `(recibido ${fmtMoney(recibido)} de ${fmtMoney(total)})` : "";
+  document.getElementById("ingList").innerHTML = ing.length ? ing.map(m=>{
+    const dia = m.fecha ? m.fecha.split("-")[2] : "—";
+    return `<div class="pend-item">
+      <input type="checkbox" class="pend-check" ${m.estado==="Pagado"?"checked":""} onchange="togglePagado('${m.id}')" title="Marcar como recibido">
+      <div class="pend-info">
+        <div class="pend-desc">${m.descripcion}</div>
+        <div class="pend-meta">${m.categoria} · día ${dia} · ${m.estado==="Pagado"?"recibido":"pendiente"}</div>
+      </div>
+      <input type="number" class="pend-importe" value="${m.importe}" onchange="updateImporte('${m.id}', this.value)" title="Editar el importe">
+    </div>`;
+  }).join("") : `<div class="empty-state">No hay ingresos cargados en ${currentMes}.</div>`;
 }
 function renderCubrirMes(tot){
   const el = document.getElementById("cubrirMesCard");
@@ -2182,11 +2207,10 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4 · 30/09/2026";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
-function bannerRespaldo(){
+function notaRespaldo(){
   const d = diasDesdeRespaldo();
-  if(d!==null && d<7) return "";
-  return `<div class="aviso-banner">${d===null?'Todavía no guardaste ningún respaldo.':`Hace ${d} días que no guardás un respaldo.`} Tu información vive solo en este celular: guardá una copia para no perderla.
-    <div style="margin-top:8px"><button class="btn" onclick="document.getElementById('btnBackup').click()">⭳ Guardar respaldo ahora</button></div></div>`;
+  const txt = d===null ? "Todavía no guardaste un respaldo." : (d===0 ? "Respaldo guardado hoy." : `Último respaldo: hace ${d} día${d===1?"":"s"}.`);
+  return `${txt} <button onclick="document.getElementById('btnBackup').click()">Guardar respaldo ahora</button>`;
 }
 // Pide al navegador que no borre los datos de la app si se queda sin espacio.
 try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{}); }catch(e){}
