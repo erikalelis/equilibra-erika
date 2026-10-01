@@ -156,6 +156,26 @@ main.content{padding:18px 16px calc(96px + env(safe-area-inset-bottom,0px)) 16px
 }
 .bn-item svg{width:22px; height:22px;}
 .bn-item.active{color:var(--accent);}
+
+.mia-rubros{grid-column:1/-1; width:100%; box-sizing:border-box; display:flex; gap:18px; align-items:center; flex-wrap:wrap; background:var(--card,#fff); border:1px solid var(--border); border-radius:16px; padding:16px;}
+.mia-donut{width:150px; height:150px; flex:none; margin:0 auto;}
+.mia-donut-l{font-size:9px; fill:var(--text-muted);}
+.mia-donut-v{font-size:13px; font-weight:700; fill:var(--text);}
+.mia-leyenda{flex:1; min-width:200px; display:flex; flex-direction:column; gap:10px;}
+.mia-leg-item{display:flex; align-items:center; gap:10px; font-size:14.5px;}
+.mia-dot{width:14px; height:14px; border-radius:50%; flex:none;}
+.mia-leg-n{flex:1; min-width:0; overflow-wrap:anywhere;}
+.mia-leg-v{font-weight:600; text-align:right; white-space:nowrap;}
+.mia-leg-v small{display:block; font-weight:400; font-size:12px; color:var(--text-muted);}
+.mia-lista{display:flex; flex-direction:column; gap:10px;}
+.mia-row{display:flex; align-items:center; gap:12px; background:var(--card,#fff); border:1px solid var(--border); border-radius:14px; padding:12px 14px;}
+.mia-dia{width:44px; flex:none; text-align:center; background:var(--bg); border-radius:10px; padding:6px 0; line-height:1.1;}
+.mia-dia b{display:block; font-size:18px;} .mia-dia span{font-size:11.5px; color:var(--text-muted); text-transform:uppercase;}
+.mia-info{flex:1; min-width:0;}
+.mia-desc{font-weight:600; font-size:14.5px; overflow-wrap:anywhere;}
+.mia-sub{font-size:12.5px; color:var(--text-muted); margin-top:2px;}
+.mia-der{text-align:right; flex:none; display:flex; flex-direction:column; gap:4px; align-items:flex-end;}
+.mia-monto{font-weight:700; font-size:15px;}
 .bn-spacer{justify-content:flex-end; color:#9FC1C8;}
 .fab{
   position:fixed; right:18px;
@@ -612,15 +632,10 @@ tbody tr:hover{background:var(--petrol-100);}
       <section class="view" id="view-centro-mia">
         <div class="kpi-grid" id="miaKpi" style="grid-template-columns:repeat(3,1fr)"></div>
         <h3 class="section-title">Por rubro</h3>
-        <div class="indic-grid" id="miaIndicGrid"></div>
+        <div id="miaIndicGrid" style="display:block"></div>
         <h3 class="section-title">Detalle del mes</h3>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Fecha</th><th>Rubro</th><th>Descripción</th><th>Importe</th><th>Estado</th></tr></thead>
-            <tbody id="miaTbody"></tbody>
-          </table>
-          <div class="empty-state" id="miaEmpty" style="display:none">No hay gastos de Mia cargados para este mes.</div>
-        </div>
+        <div id="miaLista" class="mia-lista"></div>
+        <div class="empty-state" id="miaEmpty" style="display:none">No hay gastos de Mia cargados para este mes.</div>
       </section>
 
       <!-- SOON views -->
@@ -2150,28 +2165,35 @@ function renderCentroMia(){
     grupos[key] = (grupos[key]||0) + Number(m.importe||0);
   });
   const rubros = Object.entries(grupos).sort((a,b)=>b[1]-a[1]);
-  document.getElementById("miaIndicGrid").innerHTML = rubros.length ? rubros.map(([nombre,val])=>{
-    const pctR = total>0 ? (val/total*100) : 0;
-    return `<div class="indic-card">
-      <div class="indic-top"><span class="indic-name">${nombre}</span><span class="indic-pct">${pctR.toFixed(0)}% del total de Mia</span></div>
-      <div class="progress-track"><div class="progress-fill" style="width:${Math.min(pctR,100)}%"></div></div>
-      <div class="indic-bottom"><span>${fmtMoney(val)}</span><span></span></div>
-    </div>`;
-  }).join("") : `<div class="reco-empty">No hay gastos de Mia cargados para este mes.</div>`;
+  const COLORES = ["#2E8B8B","#E0A526","#D9645A","#6C8EBF","#8E6BB5","#5FA36B","#C77D9E","#7A8B99"];
+  let acum = 0; const R = 52, C = 2*Math.PI*R;
+  const arcos = rubros.map(([n,v],i)=>{ const f = total>0 ? v/total : 0; const o = acum; acum += f;
+    return `<circle cx="70" cy="70" r="${R}" fill="none" stroke="${COLORES[i%COLORES.length]}" stroke-width="22" stroke-dasharray="${(f*C).toFixed(2)} ${(C-f*C).toFixed(2)}" stroke-dashoffset="${(-o*C).toFixed(2)}" transform="rotate(-90 70 70)"/>`; }).join("");
+  document.getElementById("miaIndicGrid").innerHTML = rubros.length ? `<div class="mia-rubros">
+      <svg viewBox="0 0 140 140" class="mia-donut" role="img" aria-label="Gastos de Mia por rubro">
+        <circle cx="70" cy="70" r="${R}" fill="none" stroke="var(--border)" stroke-width="22"/>${arcos}
+        <text x="70" y="66" text-anchor="middle" class="mia-donut-l">Total</text>
+        <text x="70" y="84" text-anchor="middle" class="mia-donut-v">${fmtMoney(total)}</text>
+      </svg>
+      <div class="mia-leyenda">${rubros.map(([nombre,val],i)=>`<div class="mia-leg-item">
+        <span class="mia-dot" style="background:${COLORES[i%COLORES.length]}"></span>
+        <span class="mia-leg-n">${nombre}</span>
+        <span class="mia-leg-v">${fmtMoney(val)}<small>${(total>0?val/total*100:0).toFixed(0)}%</small></span></div>`).join("")}</div>
+    </div>` : `<div class="reco-empty">No hay gastos de Mia cargados para este mes.</div>`;
 
-  const tbody = document.getElementById("miaTbody");
+  const lista = document.getElementById("miaLista");
   if(movs.length===0){
-    tbody.innerHTML=""; document.getElementById("miaEmpty").style.display="block";
+    lista.innerHTML=""; document.getElementById("miaEmpty").style.display="block";
   } else {
     document.getElementById("miaEmpty").style.display="none";
-    tbody.innerHTML = [...movs].sort((a,b)=>a.fecha<b.fecha?-1:1).map(m=>`
-      <tr>
-        <td>${m.fecha||""}</td>
-        <td>${m.subcategoria || m.categoria}</td>
-        <td>${m.descripcion}</td>
-        <td>${fmtMoney(m.importe)}</td>
-        <td><span class="badge badge-${m.estado==='Pagado'?'pagado':'pendiente'}">${m.estado}</span></td>
-      </tr>`).join("");
+    lista.innerHTML = [...movs].sort((a,b)=>a.fecha<b.fecha?-1:1).map(m=>{
+      const dia = parseInt((m.fecha||"").split("-")[2])||"";
+      const pag = m.estado==='Pagado';
+      return `<div class="mia-row">
+        <div class="mia-dia"><b>${dia}</b><span>${String(currentMes).slice(0,3)}</span></div>
+        <div class="mia-info"><div class="mia-desc">${m.descripcion}</div><div class="mia-sub">${m.subcategoria || m.categoria}</div></div>
+        <div class="mia-der"><div class="mia-monto">${fmtMoney(m.importe)}</div><span class="badge badge-${pag?'pagado':'pendiente'}">${pag?'Pagado':'Por pagar'}</span></div>
+      </div>`;}).join("");
   }
 }
 
@@ -2306,7 +2328,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-09-30.12";
+const APP_BUILD = "2026-09-30.13";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
