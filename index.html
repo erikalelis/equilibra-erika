@@ -156,6 +156,7 @@ main.content{padding:18px 16px calc(96px + env(safe-area-inset-bottom,0px)) 16px
 }
 .bn-item svg{width:22px; height:22px;}
 .bn-item.active{color:var(--accent);}
+.bn-spacer{justify-content:flex-end; color:#9FC1C8;}
 .fab{
   position:fixed; left:50%; transform:translateX(-50%);
   bottom:calc(34px + env(safe-area-inset-bottom,0px)); z-index:41;
@@ -315,6 +316,13 @@ main.content{padding:18px 16px calc(96px + env(safe-area-inset-bottom,0px)) 16px
   background:var(--petrol-100); color:var(--text-muted); border:1px solid var(--border);
   border-radius:12px; padding:11px 16px; font-size:14.5px; margin-bottom:16px; line-height:1.4;
 }
+.aviso-update{position:fixed; left:12px; right:12px; top:calc(10px + env(safe-area-inset-top,0px)); z-index:200; display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--petrol-800); color:#fff; padding:12px 14px; border-radius:14px; box-shadow:0 8px 24px rgba(4,20,25,.35); font-size:15px;}
+.aviso-update button{background:var(--accent); color:#0B2E38; border:none; border-radius:10px; padding:8px 14px; font-weight:700; font-size:15px;}
+.mas-lista{display:flex; flex-direction:column; gap:10px;}
+.mas-titulo{font-size:15px; color:var(--text-muted); margin:20px 0 8px 2px; font-family:var(--font-body); font-weight:600;}
+.mas-item{display:flex; flex-direction:column; align-items:flex-start; gap:3px; text-align:left; width:100%; padding:15px 16px; border:1px solid var(--border); border-radius:14px; background:var(--card); color:var(--text);}
+.mas-item strong{font-size:17px; font-weight:600;}
+.mas-item span{font-size:14px; color:var(--text-muted);}
 .respaldo-nota{font-size:13px; color:var(--text-muted); text-align:center; margin:26px 0 8px 0;}
 .respaldo-nota button{background:none; border:none; color:var(--petrol-600); font-size:13px; text-decoration:underline; padding:0 2px; cursor:pointer;}
 
@@ -502,6 +510,7 @@ tbody tr:hover{background:var(--petrol-100);}
 
         <div id="inicioSubResumen" style="display:none">
           <h3 class="section-title" style="margin-top:0">Resumen del mes</h3>
+          <div class="chart-card" id="desgloseMes" style="margin-bottom:16px"></div>
           <div class="kpi-grid" id="kpiGrid"></div>
 
           <h3 class="section-title">Indicadores rápidos</h3>
@@ -512,7 +521,6 @@ tbody tr:hover{background:var(--petrol-100);}
             <div class="reco-disclaimer">Las recomendaciones son estimaciones orientativas basadas en los datos registrados y no reemplazan el asesoramiento financiero profesional.</div>
           </div>
         </div>
-        <div class="respaldo-nota" id="inicioRespaldo"></div>
       </section>
 
       <!-- MOVIMIENTOS -->
@@ -595,7 +603,7 @@ tbody tr:hover{background:var(--petrol-100);}
 
       <!-- DEUDAS -->
       <section class="view" id="view-deudas">
-        <div class="kpi-grid" id="deudasKpi" style="grid-template-columns:repeat(3,1fr)"></div>
+        <div class="kpi-grid" id="deudasKpi" style="grid-template-columns:repeat(2,1fr)"></div>
         <h3 class="section-title">Cuotas del mes</h3>
         <div class="toolbar"><div></div><button class="btn btn-primary" id="btnNuevaDeuda">+ Nuevo préstamo</button></div>
         <div class="cards-grid" id="deudasGrid"></div>
@@ -769,6 +777,40 @@ function agregarFijosDelMes(mes, anio, st){
   });
   return n;
 }
+// El pago de la tarjeta del mes entra como gasto (categoría Tarjetas): usa el "Pago previsto" y, si no hay, el "Consumo actual".
+function montoTarjeta(t){ return Number(t.pagoPrevisto)>0 ? Number(t.pagoPrevisto) : (Number(t.consumo)||0); }
+function descTarjeta(t){ return /^tarjeta/i.test(t.nombre||"") ? t.nombre : "Tarjeta "+t.nombre; }
+function diaTarjeta(t){ const n = parseInt(String(t.vencimiento||"").replace(/[^0-9]/g," ").trim().split(" ")[0]); return n>=1 && n<=31 ? n : 10; }
+function agregarTarjetasDelMes(mes, anio, st){
+  st = st || state;
+  const ym = ymStr(mes, anio);
+  let n = 0;
+  (st.tarjetas||[]).filter(t=>t.estado!=="Inactiva").forEach(t=>{
+    const monto = montoTarjeta(t);
+    if(!(monto>0)) return;
+    const desc = descTarjeta(t);
+    const ya = st.movimientos.some(m=>m.mesRef===mes && m.anio===anio && m.tipo==="Gasto" && (m.origenTarjeta===t.id || (m.categoria==="Tarjetas" && m.descripcion===desc)));
+    if(ya) return;
+    const dia = Math.min(diaTarjeta(t), diasDelMes(ym));
+    st.movimientos.push({ id:crypto.randomUUID(), fecha:ym+"-"+pad2(dia), mesRef:mes, anio, tipo:"Gasto", categoria:"Tarjetas",
+      subcategoria:"", descripcion:desc, importe:monto, medioPago:"Débito", estado:"Pendiente", observaciones:"", recurrente:false, origenTarjeta:t.id });
+    n++;
+  });
+  return n;
+}
+// Cuando editás una tarjeta: actualiza el pago pendiente del mes que estás mirando.
+function sincronizarTarjeta(t){
+  const ym = ymStr(currentMes, currentAnio);
+  if(ym < SYNC_DESDE) return;
+  const m = state.movimientos.find(x=>x.origenTarjeta===t.id && x.mesRef===currentMes && x.anio===currentAnio);
+  if(m){
+    if(m.estado==="Pagado") return;
+    if(!(montoTarjeta(t)>0)){ state.movimientos = state.movimientos.filter(x=>x!==m); return; }
+    if(!m.importeManual) m.importe = montoTarjeta(t);
+    m.descripcion = descTarjeta(t);
+    m.fecha = ym+"-"+pad2(Math.min(diaTarjeta(t), diasDelMes(ym)));
+  } else { agregarTarjetasDelMes(currentMes, currentAnio); }
+}
 // Se llama al abrir un mes. Solo actúa del mes de octubre 2026 en adelante y hasta el mes que viene
 // (así no arma meses lejanos con valores que todavía van a cambiar).
 function sincronizarMes(mes, anio, st, forzar){
@@ -783,6 +825,7 @@ function sincronizarMes(mes, anio, st, forzar){
     st.mesesGenerados[ym] = true; n++;
   }
   n += agregarPrestamosDelMes(mes, anio, st);
+  n += agregarTarjetasDelMes(mes, anio, st);
   return n;
 }
 // Después de editar un préstamo: corrige las cuotas todavía pendientes (las pagadas no se tocan,
@@ -973,7 +1016,14 @@ function renderBottomNav(){
   const nav = document.getElementById("bottomNav");
   if(!nav) return;
   nav.innerHTML = "";
-  BOTTOM_TABS.forEach(tab=>{
+  BOTTOM_TABS.forEach((tab, i)=>{
+    if(i===2){
+      const sp = document.createElement("button");
+      sp.className = "bn-item bn-spacer";
+      sp.innerHTML = "<span>Agregar</span>";
+      sp.onclick = ()=> document.getElementById("btnNuevoMov").click();
+      nav.appendChild(sp);
+    }
     const active = tab.id!=="mas" && currentView===tab.id;
     const el = document.createElement("button");
     el.className = "bn-item" + (active?" active":"");
@@ -983,19 +1033,36 @@ function renderBottomNav(){
   });
 }
 function openMasSheet(){
-  const secundarios = MENU.filter(m=>!["inicio","movimientos","tarjetas","deudas"].includes(m.id));
+  const secc = {
+    "recurrentes":["Gastos recurrentes","Tus gastos fijos. Pasan solos al mes siguiente."],
+    "centro-mia":["Centro Mia","Todo lo que se gasta en Mia, en un solo lugar."]
+  };
+  const items = MENU.filter(m=>secc[m.id]).map(m=>`<button class="mas-item" data-mas="${m.id}"><strong>${secc[m.id][0]}</strong><span>${secc[m.id][1]}</span></button>`).join("");
   document.getElementById("modalBody").innerHTML = `
     <h2>Más</h2>
-    <div class="modal-actions" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:0;">
-      ${secundarios.map(m=>`<button class="btn" style="justify-content:space-between" data-mas="${m.id}">${m.label}${m.soon?'<span class="soon" style="background:var(--petrol-100);color:var(--petrol-700)">Próx.</span>':''}</button>`).join("")}
+    <div class="mas-lista">${items}</div>
+    <h3 class="mas-titulo">Tus datos</h3>
+    <div class="mas-lista">
+      <button class="mas-item" id="masBackup"><strong>Guardar respaldo</strong><span>Descarga una copia de todo lo que cargaste.</span></button>
+      <button class="mas-item" id="masRestore"><strong>Restaurar respaldo</strong><span>Trae tus datos desde un archivo guardado.</span></button>
+      <button class="mas-item" id="masCopias"><strong>Copias automáticas</strong><span>Volvé a cómo estaba tu app en días anteriores.</span></button>
+    </div>
+    <h3 class="mas-titulo">La app</h3>
+    <div class="mas-lista">
+      <button class="mas-item" id="masUpdate"><strong>Buscar actualización</strong><span>${APP_VERSION}</span></button>
+      <button class="mas-item" id="masTheme"><strong>Modo claro u oscuro</strong><span>Cambia los colores de la app.</span></button>
     </div>
     <div class="modal-actions" style="margin-top:16px;"><button class="btn btn-primary" onclick="closeModal()">Cerrar</button></div>`;
   document.querySelectorAll('[data-mas]').forEach(btn=>{
     btn.onclick = ()=>{ closeModal(); switchView(MENU.find(m=>m.id===btn.dataset.mas)); };
   });
+  document.getElementById("masBackup").onclick = ()=>{ closeModal(); document.getElementById("btnBackup").click(); };
+  document.getElementById("masRestore").onclick = ()=>{ closeModal(); document.getElementById("btnRestore").click(); };
+  document.getElementById("masCopias").onclick = ()=>{ closeModal(); abrirCopias(); };
+  document.getElementById("masTheme").onclick = ()=>{ closeModal(); document.getElementById("btnTheme").click(); };
+  document.getElementById("masUpdate").onclick = ()=>{ closeModal(); buscarActualizacion(true); };
   openModal();
 }
-
 function switchView(item){
   currentView = item.id;
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
@@ -1075,7 +1142,6 @@ function renderInicio(){
   } else {
     aviso.innerHTML = "";
   }
-  document.getElementById("inicioRespaldo").innerHTML = notaRespaldo();
   if(state.movimientos.length===0 && state.deudas.length===0){
     aviso.innerHTML = `<div class="aviso-banner">¡Bienvenida! Esta app todavía está vacía. Si ya usabas Equilibra, tocá ⋮ y elegí <strong>Restaurar respaldo</strong> para traer tus datos. Si empezás de cero, cargá tu primer movimiento con el botón +.</div>` + aviso.innerHTML;
   }
@@ -1093,7 +1159,6 @@ function renderInicio(){
     {label:"Total de ingresos", value: fmtMoney(tot.ingresos), delta: deltaTxt(tot.ingresos, totPrev.ingresos)},
     {label:"Total de gastos", value: fmtMoney(tot.gastos), delta: deltaTxt(tot.gastos, totPrev.gastos, true)},
     {label:"Resultado del mes", value: fmtMoney(tot.resultado), cls: tot.resultado>=0?"pos":"neg", delta: deltaTxt(tot.resultado, totPrev.resultado)},
-    {label:"Lo que te falta pagar de préstamos", value: fmtMoney(deudaTotal), delta:{txt:"Estimado: suma de las cuotas que quedan", dir:"up"}, onclick:"switchView({id:'deudas'})"},
     {label:"Compromisos mensuales", value: fmtMoney(compromisos)},
     {label:"Ahorro del mes", value: fmtMoney(ahorro)},
     {label:"Fondo de emergencia", value: fmtMoney(fondoEmergencia)},
@@ -1132,6 +1197,7 @@ function renderInicio(){
   }).join("");
 
   renderRecomendaciones(tot, catGasto, deudaTotal, compromisos);
+  renderDesglose(tot);
   renderPendientes();
   renderIngresos();
   renderCubrirMes(tot);
@@ -1157,6 +1223,23 @@ function renderPendientes(){
       </div>`;
     }).join("");
   }
+}
+function renderDesglose(tot){
+  const gs = movsDelMes(currentMes, currentAnio).filter(m=>m.tipo==="Gasto");
+  const suma = f => gs.filter(f).reduce((a,m)=>a+Number(m.importe||0),0);
+  const prest = suma(m=>m.categoria==="Préstamos"), tarj = suma(m=>m.categoria==="Tarjetas");
+  const resto = tot.gastos - prest - tarj;
+  const pagado = suma(m=>m.estado==="Pagado"), porPagar = tot.gastos - pagado;
+  const fila = (a,b,cls)=>`<div class="simu-result-row"><span>${a}</span><strong ${cls?`class="${cls}"`:''}>${b}</strong></div>`;
+  document.getElementById("desgloseMes").innerHTML = `<h3>Todo junto en ${currentMes}</h3>
+    ${fila("Ingresos", fmtMoney(tot.ingresos))}
+    ${fila("Préstamos", fmtMoney(prest))}
+    ${fila("Tarjetas", fmtMoney(tarj))}
+    ${fila("Gastos fijos y otros", fmtMoney(resto))}
+    ${fila("Total de gastos", fmtMoney(tot.gastos))}
+    ${fila("Ya pagado", fmtMoney(pagado))}
+    ${fila("Todavía por pagar", fmtMoney(porPagar))}
+    ${fila("Resultado del mes (ingresos − gastos)", fmtMoney(tot.resultado), tot.resultado<0?"neg":"pos")}`;
 }
 function renderIngresos(){
   const ing = movsDelMes(currentMes, currentAnio).filter(m=>m.tipo==="Ingreso").sort((a,b)=> (a.fecha||"") < (b.fecha||"") ? -1 : 1);
@@ -1462,7 +1545,7 @@ window.togglePagado = function(id){
 window.updateImporte = function(id, value){
   const m = state.movimientos.find(x=>x.id===id);
   m.importe = Number(value)||0;
-  if(m.origenPrestamo) m.importeManual = true;
+  if(m.origenPrestamo || m.origenTarjeta) m.importeManual = true;
   saveState(); renderView(currentView);
   toast(`Importe actualizado: ${m.descripcion} → ${fmtMoney(m.importe)}`);
 };
@@ -1530,7 +1613,7 @@ function openMovModal(mov){
     };
     if(!data.descripcion){ toast("Ingresá una descripción."); return; }
     if(isNew){ state.movimientos.push({id:crypto.randomUUID(), ...data}); }
-    else { const impAntes = mov.importe; Object.assign(mov, data); if(mov.origenPrestamo && Number(mov.importe)!==Number(impAntes)) mov.importeManual = true; }
+    else { const impAntes = mov.importe; Object.assign(mov, data); if((mov.origenPrestamo || mov.origenTarjeta) && Number(mov.importe)!==Number(impAntes)) mov.importeManual = true; }
     saveState(); closeModal(); renderMovimientos(); if(currentView==="inicio") renderInicio();
     toast("Movimiento guardado.");
   };
@@ -1708,7 +1791,9 @@ function renderTarjetas(){
 window.editTarjeta = function(id){ openTarjetaModal(state.tarjetas.find(t=>t.id===id)); };
 window.deleteTarjeta = function(id){
   if(!confirm("¿Eliminar esta tarjeta?")) return;
-  state.tarjetas = state.tarjetas.filter(t=>t.id!==id); saveState(); renderTarjetas();
+  state.tarjetas = state.tarjetas.filter(t=>t.id!==id);
+  state.movimientos = state.movimientos.filter(m=>!(m.origenTarjeta===id && m.estado==="Pendiente"));
+  saveState(); renderTarjetas();
 };
 function openTarjetaModal(t){
   const isNew = !t;
@@ -1745,6 +1830,7 @@ function openTarjetaModal(t){
     if(!data.nombre){ toast("Ingresá un nombre."); return; }
     if(isNew){ state.tarjetas.push({id:crypto.randomUUID(), ...data}); }
     else { Object.assign(t, data); }
+    sincronizarTarjeta(isNew ? state.tarjetas[state.tarjetas.length-1] : t);
     saveState(); closeModal(); renderTarjetas(); toast("Tarjeta guardada.");
   };
   openModal();
@@ -1838,8 +1924,6 @@ function renderDeudas(){
   document.getElementById("deudasKpi").innerHTML = `
     <div class="kpi-card"><div class="kpi-label">Cuotas de ${currentMes}</div><div class="kpi-value">${fmtMoney(totalMes)}</div>
       <div class="kpi-delta">${activas.length} préstamo${activas.length===1?'':'s'} · ya pagaste ${fmtMoney(pagadoMes)}</div></div>
-    <div class="kpi-card"><div class="kpi-label">Lo que te falta pagar de préstamos</div><div class="kpi-value">${fmtMoney(saldo)}</div>
-      <div class="kpi-delta">Estimado: suma de las cuotas que quedan</div></div>
     <div class="kpi-card"><div class="kpi-label">El próximo en terminar</div><div class="kpi-value" style="font-size:16px">${proxFin? proxFin.d.nombre : "—"}</div>
       ${proxFin? `<div class="kpi-delta">Termina en ${ymLabel(proxFin.c.finYM)}</div>`:''}</div>`;
 
@@ -2205,13 +2289,38 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 };
 
 /* ===================== CONFIABILIDAD ===================== */
-const APP_VERSION = "Equilibra v4 · 30/09/2026";
+const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
+const APP_BUILD = "2026-09-30.3";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
   const txt = d===null ? "Todavía no guardaste un respaldo." : (d===0 ? "Respaldo guardado hoy." : `Último respaldo: hace ${d} día${d===1?"":"s"}.`);
   return `${txt} <button onclick="document.getElementById('btnBackup').click()">Guardar respaldo ahora</button>`;
 }
+// Avisa cuando hay una versión nueva publicada y deja actualizar con un toque.
+function mostrarAvisoActualizacion(){
+  if(document.getElementById("avisoUpdate")) return;
+  const d = document.createElement("div");
+  d.id = "avisoUpdate"; d.className = "aviso-update";
+  d.innerHTML = `<span>Hay una versión nueva de Equilibra.</span><button id="btnActualizarApp">Actualizar</button>`;
+  document.body.appendChild(d);
+  document.getElementById("btnActualizarApp").onclick = async ()=>{
+    try{ const ks = await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); }catch(e){}
+    try{ const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(r=>r.update())); }catch(e){}
+    location.reload();
+  };
+}
+async function buscarActualizacion(manual){
+  try{
+    const r = await fetch("version.json?t="+Date.now(), {cache:"no-store"});
+    const j = await r.json();
+    if(j && j.build && j.build !== APP_BUILD){ mostrarAvisoActualizacion(); return true; }
+    if(manual) toast("Ya tenés la última versión.");
+  }catch(e){ if(manual) toast("No se pudo comprobar. Revisá tu conexión."); }
+  return false;
+}
+setTimeout(()=>buscarActualizacion(false), 2500);
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible") buscarActualizacion(false); });
 // Pide al navegador que no borre los datos de la app si se queda sin espacio.
 try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{}); }catch(e){}
 // Una copia automática por día (se guardan las últimas 5) en este mismo celular.
