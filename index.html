@@ -2127,9 +2127,9 @@ function openDeudaModal(d){
 
 /* ===================== CENTRO MIA ===================== */
 function renderCentroMia(){
-  const movs = movsDelMes(currentMes, currentAnio).filter(m => m.tipo==="Gasto" && (m.categoria==="Mia" || m.categoria==="Educación" || /ni[ñn]era/i.test(m.descripcion||"")));
+  const movs = movsDelMes(currentMes, currentAnio).filter(m => m.tipo==="Gasto" && (m.categoria==="Mia" || m.categoria==="Educación" || /ni[ñn]era/i.test(m.descripcion||"") || (m.origenPrestamo && /\bmia\b/i.test(m.descripcion||""))));
   const prev = mesAnterior(currentMes, currentAnio);
-  const movsPrev = movsDelMes(prev.mes, prev.anio).filter(m => m.tipo==="Gasto" && (m.categoria==="Mia" || m.categoria==="Educación" || /ni[ñn]era/i.test(m.descripcion||"")));
+  const movsPrev = movsDelMes(prev.mes, prev.anio).filter(m => m.tipo==="Gasto" && (m.categoria==="Mia" || m.categoria==="Educación" || /ni[ñn]era/i.test(m.descripcion||"") || (m.origenPrestamo && /\bmia\b/i.test(m.descripcion||""))));
   const total = movs.reduce((a,m)=>a+Number(m.importe||0),0);
   const totalPrev = movsPrev.reduce((a,m)=>a+Number(m.importe||0),0);
   const tot = totalesDelMes(currentMes, currentAnio);
@@ -2304,7 +2304,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-09-30.10";
+const APP_BUILD = "2026-09-30.11";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
