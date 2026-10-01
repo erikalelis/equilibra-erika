@@ -481,11 +481,7 @@ tbody tr:hover{background:var(--petrol-100);}
             <div class="hero-stat"><span class="hs-label">Ingresos</span><span class="hs-value pos" id="heroIngresos">$0</span></div>
             <div class="hero-stat"><span class="hs-label">Gastos</span><span class="hs-value neg" id="heroGastos">$0</span></div>
           </div>
-          <div class="hero-actions">
-            
-            <button class="hero-pill" id="heroBtnTarjetas">💳 Tarjetas</button>
-            <button class="hero-pill" id="heroBtnDeudas">📉 Préstamos</button>
-          </div>
+          
         </div>
 
         <div id="inicioAviso"></div>
@@ -1020,7 +1016,7 @@ function renderBottomNav(){
     if(i===2){
       const sp = document.createElement("button");
       sp.className = "bn-item bn-spacer";
-      sp.innerHTML = "<span>Agregar</span>";
+      sp.innerHTML = "<span>&nbsp;</span>";
       sp.style.pointerEvents="none"; sp.tabIndex=-1;
       nav.appendChild(sp);
     }
@@ -2259,8 +2255,6 @@ document.getElementById("btnTheme").onclick = ()=>{
 
 document.getElementById("fabNuevoMov").onclick = ()=> document.getElementById("btnNuevoMov").click();
 
-document.getElementById("heroBtnTarjetas").onclick = ()=> switchView(MENU.find(m=>m.id==="tarjetas"));
-document.getElementById("heroBtnDeudas").onclick = ()=> switchView(MENU.find(m=>m.id==="deudas"));
 document.getElementById("heroEyeBtn").onclick = ()=>{
   heroOculto = !heroOculto;
   document.getElementById("heroEyeBtn").textContent = heroOculto ? "🙈" : "👁";
@@ -2290,7 +2284,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-09-30.5";
+const APP_BUILD = "2026-09-30.6";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
