@@ -809,12 +809,31 @@ function sincronizarTarjeta(t){
 }
 // Se llama al abrir un mes. Solo actúa del mes de octubre 2026 en adelante y hasta el mes que viene
 // (así no arma meses lejanos con valores que todavía van a cambiar).
+// Ajuste único: gastos de Mia (comedor, niñera) pasan a ser fijos y se quitan los "(copia)" del nombre.
+function ajustesMia(st){
+  if(st._ajustesMia1) return;
+  st.recurrentes = st.recurrentes || [];
+  const limpiar = t=> String(t||"").replace(/\s*\(copia\)\s*$/i,"");
+  (st.movimientos||[]).forEach(m=>{
+    if(m.tipo==="Gasto" && /\(copia\)\s*$/i.test(m.descripcion||"")){
+      const base = limpiar(m.descripcion);
+      m.descripcion = base;
+      if(m.categoria==="Educación" && !st.recurrentes.some(r=>r.descripcion===base)){
+        st.recurrentes.push({ id:crypto.randomUUID(), descripcion:base, categoria:m.categoria, importe:m.importe,
+          fechaHabitual:String(parseInt((m.fecha||"").split("-")[2])||5), vencimiento:String(parseInt((m.fecha||"").split("-")[2])||5),
+          medioPago:m.medioPago||"Débito", inicio:"", fin:"", ajuste:"", activo:true });
+      }
+    }
+  });
+  st._ajustesMia1 = true;
+}
 function sincronizarMes(mes, anio, st, forzar){
   st = st || state;
+  ajustesMia(st);
   if((st.deudas||[]).some(d=>RENOMBRAR_PRESTAMOS[d.nombre])) actualizarMovsPrestamos(st);
   const ym = ymStr(mes, anio);
   if(ym < SYNC_DESDE) return 0;
-  if(!forzar && ym > ymAdd(ymDeHoy(), 1)) return 0;
+  if(!forzar && ym > ymAdd(ymDeHoy(), 12)) return 0;
   st.mesesGenerados = st.mesesGenerados || {};
   let n = 0;
   if(!st.mesesGenerados[ym]){
@@ -2108,9 +2127,9 @@ function openDeudaModal(d){
 
 /* ===================== CENTRO MIA ===================== */
 function renderCentroMia(){
-  const movs = movsDelMes(currentMes, currentAnio).filter(m => m.tipo==="Gasto" && (m.categoria==="Mia" || m.categoria==="Educación"));
+  const movs = movsDelMes(currentMes, currentAnio).filter(m => m.tipo==="Gasto" && (m.categoria==="Mia" || m.categoria==="Educación" || /ni[ñn]era/i.test(m.descripcion||"")));
   const prev = mesAnterior(currentMes, currentAnio);
-  const movsPrev = movsDelMes(prev.mes, prev.anio).filter(m => m.tipo==="Gasto" && (m.categoria==="Mia" || m.categoria==="Educación"));
+  const movsPrev = movsDelMes(prev.mes, prev.anio).filter(m => m.tipo==="Gasto" && (m.categoria==="Mia" || m.categoria==="Educación" || /ni[ñn]era/i.test(m.descripcion||"")));
   const total = movs.reduce((a,m)=>a+Number(m.importe||0),0);
   const totalPrev = movsPrev.reduce((a,m)=>a+Number(m.importe||0),0);
   const tot = totalesDelMes(currentMes, currentAnio);
@@ -2285,7 +2304,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-09-30.8";
+const APP_BUILD = "2026-09-30.10";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
