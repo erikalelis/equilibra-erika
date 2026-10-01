@@ -732,7 +732,7 @@ function agregarPrestamosDelMes(mes, anio, st){
   (st.deudas||[]).forEach(d=>{
     const c = cuotaEnMes(d, ym);
     if(!c || movDeCuota(st, d, ym)) return;
-    st.movimientos.push({ id:crypto.randomUUID(), fecha:c.fecha, mesRef:mes, anio, tipo:"Gasto", categoria:"Préstamos",
+    st.movimientos.push({ id:crypto.randomUUID(), fecha:c.fecha, mesRef:mes, anio, tipo:"Gasto", categoria:(d.categoria||"Préstamos"),
       subcategoria:"", descripcion:descCuota(d,c), importe:c.importe, medioPago:d.medioPago||"Débito",
       estado:"Pendiente", observaciones:"", recurrente:false, origenPrestamo:d.id, cuotaNro:c.nro });
     n++;
@@ -863,7 +863,7 @@ function actualizarMovsPrestamos(st){
     const c = cuotaEnMes(d, ym);
     if(!c) return false;
     if(!m.importeManual) m.importe = c.importe;
-    m.descripcion = descCuota(d,c); m.fecha = c.fecha; m.cuotaNro = c.nro;
+    m.descripcion = descCuota(d,c); m.fecha = c.fecha; m.cuotaNro = c.nro; m.categoria = d.categoria || "Préstamos";
     if(d.medioPago) m.medioPago = d.medioPago;
     return true;
   });
@@ -2067,6 +2067,7 @@ function openDeudaModal(d){
     <p style="font-size:12.5px;color:var(--text-muted);margin-top:-8px">Cargalo una sola vez. Cada mes la cuota avanza sola y, cuando termina, desaparece.</p>
     <div class="form-grid">
       <div class="form-field full"><label>Nombre</label><input id="d_nombre" value="${d.nombre}" placeholder="Ej: Banco · $500.000"></div>
+      <div class="form-field full"><label>¿Qué es?</label><select id="d_categoria">${[["Préstamos","Préstamo"],["Educación","Matrícula / cuotas del colegio"],["Otros","Otra compra en cuotas"]].map(([v,t])=>`<option value="${v}" ${(d.categoria||"Préstamos")===v?"selected":""}>${t}</option>`).join("")}</select></div>
       <div class="form-field"><label>Entidad</label><input id="d_entidad" value="${d.entidad||''}"></div>
       <div class="form-field"><label>Medio de pago</label><select id="d_medioPago">${MEDIOS_PAGO.map(m=>`<option ${m===(d.medioPago||"Débito")?"selected":""}>${m}</option>`).join("")}</select></div>
       <div class="form-field"><label>Moneda de la cuota</label>
@@ -2099,6 +2100,7 @@ function openDeudaModal(d){
     const cuota = (monedaSel!=="ARS" && monto && cotiz) ? round2(monto*cotiz) : (Number(document.getElementById("d_cuotaMensual").value)||0);
     const data = {
       nombre: document.getElementById("d_nombre").value.trim(),
+      categoria: document.getElementById("d_categoria").value,
       entidad: document.getElementById("d_entidad").value,
       medioPago: document.getElementById("d_medioPago").value,
       moneda: monedaSel,
@@ -2304,7 +2306,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-09-30.11";
+const APP_BUILD = "2026-09-30.12";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
