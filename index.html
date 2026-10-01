@@ -811,6 +811,7 @@ function sincronizarTarjeta(t){
 // (así no arma meses lejanos con valores que todavía van a cambiar).
 function sincronizarMes(mes, anio, st, forzar){
   st = st || state;
+  if((st.deudas||[]).some(d=>RENOMBRAR_PRESTAMOS[d.nombre])) actualizarMovsPrestamos(st);
   const ym = ymStr(mes, anio);
   if(ym < SYNC_DESDE) return 0;
   if(!forzar && ym > ymAdd(ymDeHoy(), 1)) return 0;
@@ -826,8 +827,15 @@ function sincronizarMes(mes, anio, st, forzar){
 }
 // Después de editar un préstamo: corrige las cuotas todavía pendientes (las pagadas no se tocan,
 // y tampoco un importe que editaste a mano en el movimiento).
+const RENOMBRAR_PRESTAMOS = {
+  "Galicia · $2.700.000":"Galicia · Préstamo personal",
+  "Galicia · Plata al Toque $100.000":"Galicia · Plata al Toque (3 cuotas)",
+  "Galicia · Plata al Toque $200.000":"Galicia · Plata al Toque (pago único)",
+  "Nubank · R$ 304,29":"Nubank · Cuotas en reales"
+};
 function actualizarMovsPrestamos(st){
   st = st || state;
+  (st.deudas||[]).forEach(d=>{ if(RENOMBRAR_PRESTAMOS[d.nombre]) d.nombre = RENOMBRAR_PRESTAMOS[d.nombre]; });
   st.movimientos = st.movimientos.filter(m=>{
     if(!m.origenPrestamo || m.estado==="Pagado") return true;
     const d = (st.deudas||[]).find(x=>x.id===m.origenPrestamo);
@@ -2277,7 +2285,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-09-30.7";
+const APP_BUILD = "2026-09-30.8";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
