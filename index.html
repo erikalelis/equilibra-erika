@@ -1935,8 +1935,8 @@ function renderDeudas(){
     const restan = c.restantes - (pagada?1:0);
     const otra = d.moneda && d.moneda!=="ARS";
     return `<div class="entity-card">
-      <div class="ehead"><div><h4>${d.nombre}</h4><div class="bank">${d.entidad||""}</div></div>
-        <span class="badge ${pagada?'badge-pagado':'badge-pendiente'}">${pagada?'Pagada':'Por pagar'}</span></div>
+      <div class="ehead"><div style="min-width:0;flex:1"><h4>${d.nombre}</h4><div class="bank">${d.entidad||""}</div></div>
+        <span class="badge ${pagada?'badge-pagado':'badge-pendiente'}" style="white-space:nowrap;flex:none;align-self:flex-start">${pagada?'Pagada':'Por pagar'}</span></div>
       <div class="entity-stats">
         <div><div class="estat-label">Cuota de ${currentMes}</div><div class="estat-val">${c.nro} de ${c.total}</div></div>
         <div><div class="estat-label">Importe</div><div class="estat-val">${fmtMoney(c.importe)}</div></div>
@@ -2290,7 +2290,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-09-30.3";
+const APP_BUILD = "2026-09-30.4";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
