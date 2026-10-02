@@ -1074,7 +1074,7 @@ function ajustesLimpieza2(st){
   // cuota de escuela duplicada (mismo mes): queda una sola, prefiere la ya pagada
   { const vc=new Map(), qc=new Set();
     [...(st.movimientos||[])].sort((a,b)=>(a.estado==="Pagado"?0:1)-(b.estado==="Pagado"?0:1)).forEach(m=>{
-      if(m.tipo!=="Ingreso"||m.categoria!=="Cuota escuela") return;
+      if(m.tipo!=="Ingreso"||!(m.categoria==="Cuota escuela"||/cuota\s*(de\s*la\s*)?(escuela|escolar)|escuela/i.test(m.descripcion||""))) return;
       const k=m.mesRef+"|"+m.anio; if(vc.has(k)) qc.add(m); else vc.set(k,m); });
     if(qc.size) st.movimientos=st.movimientos.filter(m=>!qc.has(m)); }
   // historial de Alimentos: si falta algún mes de la planilla, se vuelve a cargar (no pisa lo que ya tengas)
@@ -2936,7 +2936,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-02.63";
+const APP_BUILD = "2026-10-02.64";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
