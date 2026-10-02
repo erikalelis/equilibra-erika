@@ -682,7 +682,7 @@ tbody tr:hover{background:var(--petrol-100);}
 <script>
 /* ===================== ESTADO ===================== */
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-const CAT_INGRESO = ["Sueldo","Horas extras","ANSES","Gift Card","Alimentos o pensión","Ayuda escolar","Reintegros","Transferencias recibidas","Otros ingresos"];
+const CAT_INGRESO = ["Sueldo","Horas extras","ANSES","Gift Card","Alimentos","Ayuda escolar","Reintegros","Transferencias recibidas","Otros ingresos"];
 const CAT_GASTO = ["Vivienda","Alimentación","Servicios","Educación","Mia","Salud","Tarjetas","Préstamos","Transferencias","Limpieza","Cuidado personal","Suscripciones","Transporte","Ropa","Regalos","Eventos","Ahorro","Otros"];
 const MEDIOS_PAGO = ["Débito","Efectivo","Tarjeta Visa","Mercado Pago","Transferencia","Otro"];
 // Subí este número cada vez que se actualizan los datos base (seedData). Si lo guardado en el navegador
@@ -952,7 +952,7 @@ function loadState(){
   const raw = localStorage.getItem("eriFinanceData");
   if(raw){
     try{
-      const data = JSON.parse(raw);
+      const data = JSON.parse(raw.split("Alimentos o pensión").join("Alimentos"));
       if(data._seedVersion !== SEED_VERSION){
         // Los datos guardados en este navegador son de una versión anterior de la planilla (por ejemplo,
         // de antes de que se supiera qué estaba pagado y qué no). Se reemplazan por los datos reales y
@@ -2386,7 +2386,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-01.14";
+const APP_BUILD = "2026-10-01.15";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
