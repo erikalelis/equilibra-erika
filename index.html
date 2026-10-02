@@ -254,6 +254,7 @@ main.content{padding:18px 16px calc(96px + env(safe-area-inset-bottom,0px)) 16px
 .mov-amt.pos{color:#2E8F6B}.mov-amt.neg{color:#B4413A}
 
 .mm-card{background:#fff;border-radius:20px;padding:16px;margin-bottom:14px;box-shadow:0 6px 20px rgba(10,40,50,.08);animation:vIn .45s ease-out both}
+.mm-vs{font-weight:500;color:var(--text-muted);font-size:14px}
 .mm-tit{font-size:15.5px;font-weight:700;margin-bottom:12px;color:var(--text)}
 .mm-bars{display:flex;gap:8px;align-items:flex-end;height:150px}
 .mm-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;opacity:.55}
@@ -676,9 +677,7 @@ tbody tr:hover{background:var(--petrol-100);}
         </div>
         <div id="movResultados"></div>
         <div id="mesAMes">
-          <div class="mm-card"><div class="mm-tit">Últimos 6 meses</div><div class="mm-bars" id="mmBars"></div>
-            <div class="mm-leg"><span><i style="background:#2E8F6B"></i>Entró</span><span><i style="background:#E07A5F"></i>Salió</span></div></div>
-          <div class="mm-card" id="mmComp"></div>
+                    <div class="mm-card" id="mmComp"></div>
           <div class="mm-card" id="mmAlim"></div>
           <div class="mm-card"><div class="mm-tit">En qué gastaste más</div><div id="mmCats"></div></div>
         </div>
@@ -1244,7 +1243,6 @@ function renderBottomNav(){
 }
 function openMasSheet(){
   const secc = {
-    "recurrentes":["Gastos recurrentes","Tus gastos fijos. Pasan solos al mes siguiente."],
     "centro-mia":["Centro Mia","Todo lo que se gasta en Mia, en un solo lugar."]
   };
   const items = MENU.filter(m=>secc[m.id]).map(m=>`<button class="mas-item" data-mas="${m.id}"><strong>${secc[m.id][0]}</strong><span>${secc[m.id][1]}</span></button>`).join("");
@@ -1257,11 +1255,6 @@ function openMasSheet(){
       <button class="mas-item" id="masRestore"><strong>Restaurar respaldo</strong><span>Trae tus datos desde un archivo guardado.</span></button>
       <button class="mas-item" id="masCopias"><strong>Copias automáticas</strong><span>Volvé a cómo estaba tu app en días anteriores.</span></button>
     </div>
-    <h3 class="mas-titulo">La app</h3>
-    <div class="mas-lista">
-      <button class="mas-item" id="masUpdate"><strong>Buscar actualización</strong><span>${APP_VERSION}</span></button>
-      <button class="mas-item" id="masTheme"><strong>Modo claro u oscuro</strong><span>Cambia los colores de la app.</span></button>
-    </div>
     <div class="modal-actions" style="margin-top:16px;"><button class="btn btn-primary" onclick="closeModal()">Cerrar</button></div>`;
   document.querySelectorAll('[data-mas]').forEach(btn=>{
     btn.onclick = ()=>{ closeModal(); switchView(MENU.find(m=>m.id===btn.dataset.mas)); };
@@ -1269,8 +1262,6 @@ function openMasSheet(){
   document.getElementById("masBackup").onclick = ()=>{ closeModal(); document.getElementById("btnBackup").click(); };
   document.getElementById("masRestore").onclick = ()=>{ closeModal(); document.getElementById("btnRestore").click(); };
   document.getElementById("masCopias").onclick = ()=>{ closeModal(); abrirCopias(); };
-  document.getElementById("masTheme").onclick = ()=>{ closeModal(); document.getElementById("btnTheme").click(); };
-  document.getElementById("masUpdate").onclick = ()=>{ closeModal(); buscarActualizacion(true); };
   openModal();
 }
 function switchView(item){
@@ -1772,20 +1763,17 @@ function renderMovimientos(){
     return;
   }
   res.innerHTML=""; mm.style.display="block"; renderAlimentos();
-  // últimos 6 meses
   const meses=[]; let cur={mes:currentMes,anio:currentAnio};
-  for(let i=0;i<6;i++){ meses.unshift(cur); cur=mesAnterior(cur.mes,cur.anio); }
+  for(let i=0;i<2;i++){ meses.unshift(cur); cur=mesAnterior(cur.mes,cur.anio); }
   const datos=meses.map(x=>({...x,t:totalesDelMes(x.mes,x.anio)}));
-  const max=Math.max(1,...datos.map(d=>Math.max(d.t.ingresos,d.t.gastos)));
-  document.getElementById("mmBars").innerHTML=datos.map((d,i)=>`<div class="mm-col${i===5?' now':''}"><div class="mm-pair"><i class="in" style="height:${Math.round(d.t.ingresos/max*100)}%"></i><i class="out" style="height:${Math.round(d.t.gastos/max*100)}%"></i></div><span>${d.mes.slice(0,3)}</span></div>`).join("");
   // comparación
-  const now=datos[5].t, prev=datos[4].t, pn=datos[4].mes;
+  const now=datos[1].t, prev=datos[0].t, pn=datos[0].mes;
   let comp="";
-  if(now.sinDatos){ comp=`<div class="mm-tit">Este mes</div><p class="mm-p">Todavía no hay datos cargados en ${currentMes}.</p>`; }
-  else if(prev.sinDatos||prev.gastos===0){ comp=`<div class="mm-tit">Este mes</div><p class="mm-p">Gastaste <b>${fmtMoney(now.gastos)}</b> y cobraste <b>${fmtMoney(now.ingresos)}</b>.</p>`; }
+  if(now.sinDatos){ comp=`<div class="mm-tit">Cómo vas este mes</div><p class="mm-p">Todavía no hay datos cargados en ${currentMes}.</p>`; }
+  else if(prev.sinDatos||prev.gastos===0){ comp=`<div class="mm-tit">Cómo vas este mes</div><p class="mm-p">Gastaste <b>${fmtMoney(now.gastos)}</b> y cobraste <b>${fmtMoney(now.ingresos)}</b>.</p>`; }
   else {
     const dg=(now.gastos-prev.gastos)/prev.gastos*100, up=dg>0;
-    comp=`<div class="mm-tit">Comparado con ${pn}</div>
+    comp=`<div class="mm-tit">Cómo vas este mes <span class="mm-vs">vs ${pn}</span></div>
       <div class="mm-big ${up?'neg':'pos'}">${up?"▲":"▼"} ${Math.abs(Math.round(dg))}%</div>
       <p class="mm-p">${Math.abs(Math.round(dg))===0?"Gastaste lo mismo que en "+pn+".":(up?"Gastaste más que en ":"Gastaste menos que en ")+pn+(up?". Revisá en qué se fue 👇":". ¡Muy bien! 👏")}</p>`;
   }
@@ -1808,12 +1796,15 @@ window.openMovActions = function(id){
       <button class="btn" id="maEditar">✎ Editar</button>
       <button class="btn" id="maDuplicar">⧉ Duplicar</button>
       <button class="btn" id="maPagado">✓ Marcar como ${m.estado==='Pagado'?'pendiente':'pagado'}</button>
+      ${m.recurrente?`<button class="btn" id="maNoRep">⏹ Dejar de repetir cada mes</button>`:""}
       <button class="btn" id="maEliminar" style="color:var(--rojo)">✕ Eliminar</button>
     </div>
     <div class="modal-actions" style="margin-top:16px;"><button class="btn btn-primary" onclick="closeModal()">Cerrar</button></div>`;
   document.getElementById("maEditar").onclick = ()=>{ closeModal(); editMov(id); };
   document.getElementById("maDuplicar").onclick = ()=>{ closeModal(); duplicateMov(id); };
   document.getElementById("maPagado").onclick = ()=>{ closeModal(); togglePagado(id); };
+  const nr=document.getElementById("maNoRep");
+  if(nr) nr.onclick=()=>{ closeModal(); m.recurrente=false; (state.recurrentes||[]).filter(r=>r.descripcion===m.descripcion).forEach(r=>r.activo=false); saveState(); renderView(currentView); toast("Listo: «"+m.descripcion+"» ya no se repite los próximos meses."); };
   document.getElementById("maEliminar").onclick = ()=>{ closeModal(); deleteMov(id); };
   openModal();
 };
@@ -2571,7 +2562,6 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
       <button class="btn" id="mmBackup">⭳ Guardar respaldo</button>
       <button class="btn" id="mmRestore">⭱ Restaurar respaldo</button>
       <button class="btn" id="mmCopias">↺ Copias automáticas</button>
-      <button class="btn" id="mmTheme">◐ Modo claro / oscuro</button>
       <button class="btn" id="mmReset" style="color:var(--rojo)">🗑 Borrar todos los datos</button>
     </div>
     <p style="font-size:12px;color:var(--text-muted);margin:12px 0 0 0">${APP_VERSION}</p>
@@ -2580,14 +2570,13 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
   document.getElementById("mmBackup").onclick = ()=>{ closeModal(); document.getElementById("btnBackup").click(); };
   document.getElementById("mmRestore").onclick = ()=>{ closeModal(); document.getElementById("btnRestore").click(); };
   document.getElementById("mmCopias").onclick = ()=>{ closeModal(); abrirCopias(); };
-  document.getElementById("mmTheme").onclick = ()=>{ closeModal(); document.getElementById("btnTheme").click(); };
   document.getElementById("mmReset").onclick = ()=>{ closeModal(); document.getElementById("btnResetData").click(); };
   openModal();
 };
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-01.35";
+const APP_BUILD = "2026-10-01.36";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();

@@ -1,4 +1,4 @@
-const CACHE_NAME = "equilibra-v17";
+const CACHE_NAME = "equilibra-v18";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
