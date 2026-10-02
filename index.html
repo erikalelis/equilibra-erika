@@ -277,6 +277,7 @@ main.content{padding:18px 16px calc(96px + env(safe-area-inset-bottom,0px)) 16px
 .mv-cat:first-child{margin-top:4px}
 .mv-cat b{font-family:var(--font-display);font-weight:600}
 
+.ac-total{background:#E6F4EE;border-radius:12px;padding:10px 12px;margin:12px 0;font-size:15px}
 .al-tot{font-size:15.5px;margin-bottom:10px}
 .al-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 4px;border-top:1px solid var(--border);cursor:pointer}
 .al-m{font-size:16.5px;font-weight:600}.al-d{font-size:13.5px;color:var(--text-muted);margin-top:2px}
@@ -1702,7 +1703,7 @@ function renderAlimentos(){
   const todos=state.movimientos.filter(m=>m.tipo==="Ingreso"&&m.categoria==="Alimentos");
   let html=`<div class="mm-tit">🧸 Alimentos (pensión)</div>`;
   if(!todos.length){
-    html+=`<p class="mm-p" style="margin-bottom:12px">Llevá el control de lo que te pagan de pensión, mes a mes: cuánto y qué día. Se repite solo todos los meses y vos marcás cuando llega.</p><button class="btn btn-primary" style="width:100%" onclick="openAlimPago()">+ Registrar el primer pago</button><button class="btn" style="width:100%;margin-top:8px" onclick="openAlimImport()">Cargar varios pagos juntos</button>`;
+    html+=`<p class="mm-p" style="margin-bottom:12px">Llevá el control de lo que te pagan de pensión, mes a mes: cuánto y qué día. Se repite solo todos los meses y vos marcás cuando llega.</p><button class="btn btn-primary" style="width:100%" onclick="openAlimCobro()">📩 Cobrar este mes (WhatsApp)</button><button class="btn" style="width:100%;margin-top:8px" onclick="openAlimPago()">+ Registrar el primer pago</button><button class="btn" style="width:100%;margin-top:8px" onclick="openAlimImport()">Cargar varios pagos juntos</button>`;
     el.innerHTML=html; return;
   }
   let cur={mes:currentMes,anio:currentAnio}, filas="";
@@ -1717,9 +1718,43 @@ function renderAlimentos(){
     cur=mesAnterior(cur.mes,cur.anio);
   }
   const anio=todos.filter(m=>m.estado==="Pagado"&&m.anio===currentAnio).reduce((a,m)=>a+Number(m.importe||0),0);
-  html+=`<div class="al-tot">Recibido en ${currentAnio}: <b>${fmtMoney(anio)}</b></div>${filas}<button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="openAlimPago()">+ Registrar pago recibido</button><button class="btn" style="width:100%;margin-top:8px" onclick="openAlimImport()">Cargar varios pagos juntos</button>`;
+  html+=`<div class="al-tot">Recibido en ${currentAnio}: <b>${fmtMoney(anio)}</b></div>${filas}<button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="openAlimCobro()">📩 Cobrar este mes (WhatsApp)</button><button class="btn" style="width:100%;margin-top:8px" onclick="openAlimPago()">+ Registrar pago recibido</button><button class="btn" style="width:100%;margin-top:8px" onclick="openAlimImport()">Cargar varios pagos juntos</button>`;
   el.innerHTML=html;
 }
+/* ===== Cobrar este mes: pensión + mitad de la cuota → mensaje de WhatsApp ===== */
+const ALIM_PLANTILLA="¡Hola! Te paso lo de {mes}:\n• Alimentos: {pension}\n• Cuota escolar: {cuota} (tu parte {pct}%: {mitad})\n*Total a transferir: {total}*\n¡Gracias! 🙏";
+window.openAlimCobro=function(){
+  state.config=state.config||{}; const cf=state.config.alim=state.config.alim||{};
+  state.config.alimMeses=state.config.alimMeses||{};
+  const ym=ymStr(currentMes,currentAnio), g=state.config.alimMeses[ym]||{};
+  const ult=state.movimientos.filter(m=>m.tipo==="Ingreso"&&m.categoria==="Alimentos"&&m.estado==="Pagado").sort((a,b)=>(a.fecha||"")<(b.fecha||"")?-1:1).pop();
+  document.getElementById("modalBody").innerHTML=`<h2>📩 Cobrar ${currentMes}</h2>
+   <div class="form-grid">
+    <div class="form-field"><label>Alimentos del mes</label><input type="number" inputmode="numeric" id="ac_pen" value="${g.pension??(ult?Math.round(ult.importe):"")}" placeholder="0"></div>
+    <div class="form-field"><label>Cuota escolar (total)</label><input type="number" inputmode="numeric" id="ac_cuo" value="${g.cuota??""}" placeholder="0"></div>
+    <div class="form-field"><label>Su parte de la cuota (%)</label><input type="number" inputmode="numeric" id="ac_pct" value="${cf.pct??50}"></div>
+    <div class="form-field"><label>WhatsApp (con código de país)</label><input type="tel" id="ac_tel" value="${cf.tel||""}" placeholder="5491112345678"></div>
+   </div>
+   <div class="ac-total" id="ac_total"></div>
+   <label style="font-size:14px;color:var(--text-muted)">Mensaje (podés cambiarlo)</label>
+   <textarea id="ac_msg" rows="7" style="width:100%;font-size:15px;padding:10px;border-radius:12px;border:1px solid var(--border);font-family:inherit"></textarea>
+   <div class="modal-actions" style="margin-top:14px;flex-wrap:wrap"><button class="btn btn-primary" id="ac_wa">Enviar por WhatsApp</button><button class="btn" id="ac_copy">Copiar</button><button class="btn" onclick="closeModal()">Cerrar</button></div>`;
+  const $=id=>document.getElementById(id); let editado=false;
+  const num=id=>Number($(id).value)||0;
+  const armar=()=>{
+    const pen=num("ac_pen"), cuo=num("ac_cuo"), pct=num("ac_pct"), mit=Math.round(cuo*pct/100), tot=pen+mit;
+    $("ac_total").innerHTML=`Su parte de la cuota: <b>${fmtMoney(mit)}</b> · Total a cobrar: <b>${fmtMoney(tot)}</b>`;
+    if(!editado) $("ac_msg").value=(cf.plantilla||ALIM_PLANTILLA).replace("{mes}",currentMes).replace("{pension}",fmtMoney(pen)).replace("{cuota}",fmtMoney(cuo)).replace("{pct}",pct).replace("{mitad}",fmtMoney(mit)).replace("{total}",fmtMoney(tot));
+  };
+  ["ac_pen","ac_cuo","ac_pct"].forEach(i=>$(i).oninput=armar); $("ac_msg").oninput=()=>{editado=true};
+  const guardar=()=>{ cf.tel=$("ac_tel").value.replace(/[^0-9]/g,""); cf.pct=num("ac_pct")||50; state.config.alimMeses[ym]={pension:num("ac_pen"),cuota:num("ac_cuo")}; saveState(); };
+  $("ac_wa").onclick=()=>{
+    guardar(); if(!cf.tel){ toast("Poné el WhatsApp con código de país, por ejemplo 5491112345678."); return; }
+    window.open("https://wa.me/"+cf.tel+"?text="+encodeURIComponent($("ac_msg").value),"_blank");
+  };
+  $("ac_copy").onclick=async()=>{ guardar(); try{ await navigator.clipboard.writeText($("ac_msg").value); toast("Mensaje copiado."); }catch(e){ toast("No pude copiar. Mantené apretado el texto para copiarlo."); } };
+  armar(); openModal();
+};
 window.openAlimImport=function(){
   document.getElementById("modalBody").innerHTML=`<h2>Cargar varios pagos</h2>
    <p class="mm-p" style="margin:0 0 10px">Pegá un pago por línea: <b>día/mes/año importe</b> (y si querés una nota al final). Ejemplo:<br><span style="color:var(--text-muted)">5/1/2026 510934,65 Pensión y aguinaldo</span></p>
@@ -2599,7 +2634,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-01.37";
+const APP_BUILD = "2026-10-01.38";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
