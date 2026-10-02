@@ -332,7 +332,7 @@ main.content{padding:18px 16px calc(96px + env(safe-area-inset-bottom,0px)) 16px
 .pr-bar{height:8px;border-radius:99px;background:rgba(255,255,255,.28);overflow:hidden}
 .pr-bar i{display:block;height:100%;border-radius:99px;background:#6BE0A8;transition:width .7s}
 .pr-hero-pie{display:flex;justify-content:space-between;font-size:14px;margin-top:8px;position:relative;z-index:1}
-.pr-hero-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.25);position:relative;z-index:1}
+.pr-hero-2{display:grid;grid-template-columns:1fr;gap:12px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.25);position:relative;z-index:1}
 .pr-hero-2 strong{display:block;font-size:17px;font-family:var(--font-display)}.pr-hero-2 em{font-style:normal;font-size:13px;opacity:.85}
 .pr-card{background:#fff;border-radius:20px;padding:14px 16px;margin-bottom:12px;box-shadow:0 6px 20px rgba(10,40,50,.08);border-left:5px solid #E8B84B;animation:vIn .45s ease-out both}
 .pr-card.pg{border-left-color:#4FA383}
@@ -2422,7 +2422,7 @@ function renderDeudas(){
     <div class="pr-hero"><small>Cuotas de ${currentMes}</small><b>${fmtMoney(totalMes)}</b>
       <div class="pr-bar"><i style="width:${pctMes}%"></i></div>
       <div class="pr-hero-pie"><span>Pagaste ${fmtMoney(pagadoMes)} (${pctMes}%)</span><span>${activas.length} préstamo${activas.length===1?'':'s'}</span></div>
-      <div class="pr-hero-2"><div><small>Deuda total que queda</small><strong>${fmtMoney(saldo)}</strong></div><div><small>El próximo en terminar</small><strong>${proxFin? proxFin.d.nombre.split(" · ").pop() : "—"}</strong>${proxFin? `<em>${ymLabel(proxFin.c.finYM)}</em>`:""}</div></div>
+      <div class="pr-hero-2"><div><small>El próximo en terminar</small><strong>${proxFin? proxFin.d.nombre.split(" · ").pop() : "—"}</strong>${proxFin? `<em>${ymLabel(proxFin.c.finYM)}</em>`:""}</div></div>
     </div>`;
 
   document.getElementById("deudasGrid").style.cssText="display:block";
@@ -2789,7 +2789,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-02.47";
+const APP_BUILD = "2026-10-02.48";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
