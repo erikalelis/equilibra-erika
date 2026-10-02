@@ -227,8 +227,8 @@ main.content{padding:18px 16px calc(96px + env(safe-area-inset-bottom,0px)) 16px
 .c-red b{color:#B4413A}.c-green b{color:#2E8F6B}.c-gold b{color:#B8841A}
 .mini-ayuda{font-size:13.5px;color:var(--text-muted);margin:10px 2px 0}
 .mv-det{margin-top:14px}
-.mv-det summary{cursor:pointer;font-size:14.5px;font-weight:700;color:var(--text-muted);padding:10px 4px;list-style:none}
-.mv-det summary::before{content:"▸ "}.mv-det[open] summary::before{content:"▾ "}
+.mv-det summary{cursor:pointer;font-size:17px;font-weight:700;color:var(--petrol-700,#145366);padding:14px 16px;list-style:none;background:#fff;border:1.5px solid var(--border);border-radius:16px;display:flex;justify-content:space-between;align-items:center}
+.mv-det summary::before{content:none}.mv-det summary::after{content:"▼";font-size:14px;transition:transform .25s}.mv-det[open] summary::after{transform:rotate(180deg)}.mv-det[open] summary{margin-bottom:10px}
 .inicio-subtab{flex:1;padding-left:6px;padding-right:6px;font-size:15px}
 
 .mov-resumen{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
@@ -275,6 +275,14 @@ main.content{padding:18px 16px calc(96px + env(safe-area-inset-bottom,0px)) 16px
 .mv-cat{display:flex;justify-content:space-between;align-items:center;font-size:16.5px;font-weight:700;margin:18px 4px 8px}
 .mv-cat:first-child{margin-top:4px}
 .mv-cat b{font-family:var(--font-display);font-weight:600}
+
+.al-tot{font-size:15.5px;margin-bottom:10px}
+.al-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 4px;border-top:1px solid var(--border);cursor:pointer}
+.al-m{font-size:16.5px;font-weight:600}.al-d{font-size:13.5px;color:var(--text-muted);margin-top:2px}
+.al-chip{font-size:14.5px;font-weight:700;padding:6px 12px;border-radius:999px;white-space:nowrap}
+.al-chip.ok{background:#E6F4EE;color:#2E8F6B}.al-chip.wait{background:#FBF1D9;color:#B8841A}.al-chip.none{background:#eef2f3;color:var(--text-muted)}
+.al-item{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border)}
+.al-item b{font-size:18px}.al-btns{display:flex;gap:6px}
 .hero-frase{position:relative;z-index:1;font-size:15.5px;margin-top:6px;opacity:.92;font-weight:500}
 .dona-card{background:var(--card,#fff);border-radius:20px;padding:16px;margin:14px 0;box-shadow:0 6px 20px rgba(10,40,50,.08);display:flex;flex-direction:column;gap:14px;align-items:center}
 .dona-card:empty{display:none}
@@ -283,8 +291,8 @@ main.content{padding:18px 16px calc(96px + env(safe-area-inset-bottom,0px)) 16px
 .dona-wrap circle.seg{fill:none;stroke-width:7;stroke-linecap:butt;animation:donaIn .9s ease-out both}
 @keyframes donaIn{from{stroke-dasharray:0 100}}
 .dona-centro{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
-.dona-centro small{font-size:13px;color:var(--text-muted,#6b7a80)}
-.dona-centro b{font-size:25px;font-family:var(--font-display);line-height:1.1}
+.dona-centro small{font-size:12px;color:var(--text-muted,#6b7a80)}
+.dona-centro b{font-size:17px;font-family:var(--font-display);line-height:1.1}
 .dona-leg{width:100%;min-width:0;display:grid;grid-template-columns:1fr 1fr;gap:8px 16px}
 .dona-leg div{display:flex;align-items:center;gap:7px;font-size:14.5px}
 .dona-leg i{width:12px;height:12px;border-radius:50%;flex:none}
@@ -671,6 +679,7 @@ tbody tr:hover{background:var(--petrol-100);}
           <div class="mm-card"><div class="mm-tit">Últimos 6 meses</div><div class="mm-bars" id="mmBars"></div>
             <div class="mm-leg"><span><i style="background:#2E8F6B"></i>Entró</span><span><i style="background:#E07A5F"></i>Salió</span></div></div>
           <div class="mm-card" id="mmComp"></div>
+          <div class="mm-card" id="mmAlim"></div>
           <div class="mm-card"><div class="mm-tit">En qué gastaste más</div><div id="mmCats"></div></div>
         </div>
         <div class="mov-list" id="movList" style="display:none"></div>
@@ -787,7 +796,7 @@ const SEED_VERSION = 3;
 
 const MENU = [
   {id:"inicio", label:"Inicio", soon:false},
-  {id:"movimientos", label:"Mes a mes", soon:false},
+  {id:"movimientos", label:"Panorama", soon:false},
   {id:"recurrentes", label:"Gastos recurrentes", soon:false},
   {id:"tarjetas", label:"Tarjetas", soon:false},
   {id:"deudas", label:"Préstamos", soon:false},
@@ -1205,7 +1214,7 @@ function dotIcon(){
 /* ---------- Bottom tab bar (formato app) ---------- */
 const BOTTOM_TABS = [
   {id:"inicio", label:"Inicio", icon:"home"},
-  {id:"movimientos", label:"Mes a mes", icon:"list"},
+  {id:"movimientos", label:"Panorama", icon:"list"},
   {id:"tarjetas", label:"Tarjetas", icon:"card"},
   {id:"deudas", label:"Préstamos", icon:"debt"},
   {id:"mas", label:"Más", icon:"more"},
@@ -1286,7 +1295,7 @@ function switchView(item){
 function subtitleFor(id){
   return {
     inicio:"Resumen ejecutivo del mes",
-    movimientos:"Cómo vienen tus meses",
+    movimientos:"Cómo vienen tus meses y tus Alimentos",
     recurrentes:"Gastos que se repiten cada mes",
     tarjetas:"Tarjetas, cuotas y simulador",
     deudas:"Tus cuotas mes a mes",
@@ -1434,7 +1443,7 @@ function renderInicio(){
   renderIngresos();
   renderCubrirMes(tot);
 }
-const CAT_ICO={"Vivienda":"🏠","Alimentación":"🛒","Supermercado":"🛒","Alimentos":"🛒","Servicios":"💡","Préstamos":"🏦","Tarjetas":"💳","Salud y bienestar":"💪","Salud":"💪","Educación":"🎓","Transporte":"🚗","Ahorro":"🐷","Sueldo":"💼","Otros ingresos":"✨","Ocio":"🎉","Otros":"🧾"};
+const CAT_ICO={"Vivienda":"🏠","Alimentación":"🛒","Supermercado":"🛒","Alimentos":"🧸","Servicios":"💡","Préstamos":"🏦","Tarjetas":"💳","Salud y bienestar":"💪","Salud":"💪","Educación":"🎓","Transporte":"🚗","Ahorro":"🐷","Sueldo":"💼","Otros ingresos":"✨","Ocio":"🎉","Otros":"🧾"};
 function agrupaCat(arr){
   const g={}; arr.forEach(m=>{(g[m.categoria||"Otros"]=g[m.categoria||"Otros"]||[]).push(m)});
   return Object.entries(g).sort((a,b)=>b[1].reduce((x,m)=>x+Number(m.importe||0),0)-a[1].reduce((x,m)=>x+Number(m.importe||0),0))
@@ -1694,6 +1703,61 @@ function populateCategoryFilter(){
   const all = [...CAT_INGRESO, ...CAT_GASTO];
   sel.innerHTML = `<option value="">Todas las categorías</option>` + all.map(c=>`<option value="${c}">${c}</option>`).join("");
 }
+
+/* ===== ALIMENTOS (pensión): control mes a mes ===== */
+function alimMovs(mes,anio){ return state.movimientos.filter(m=>m.tipo==="Ingreso"&&m.categoria==="Alimentos"&&m.mesRef===mes&&m.anio===anio).sort((a,b)=>(a.fecha||"")<(b.fecha||"")?-1:1); }
+function renderAlimentos(){
+  const el=document.getElementById("mmAlim"); if(!el) return;
+  const todos=state.movimientos.filter(m=>m.tipo==="Ingreso"&&m.categoria==="Alimentos");
+  let html=`<div class="mm-tit">🧸 Alimentos (pensión)</div>`;
+  if(!todos.length){
+    html+=`<p class="mm-p" style="margin-bottom:12px">Llevá el control de lo que te pagan de pensión, mes a mes: cuánto y qué día. Se repite solo todos los meses y vos marcás cuando llega.</p><button class="btn btn-primary" style="width:100%" onclick="openAlimPago()">+ Registrar el primer pago</button>`;
+    el.innerHTML=html; return;
+  }
+  let cur={mes:currentMes,anio:currentAnio}, filas="";
+  for(let i=0;i<6;i++){
+    const ms=alimMovs(cur.mes,cur.anio), rec=ms.filter(m=>m.estado==="Pagado"), pend=ms.filter(m=>m.estado!=="Pagado");
+    const tr=rec.reduce((a,m)=>a+Number(m.importe||0),0);
+    let chip, det="";
+    if(rec.length){ chip=`<span class="al-chip ok">✓ ${fmtMoney(tr)}</span>`; det=rec.map(m=>(m.fecha||"").split("-").reverse().slice(0,2).join("/")).join(" · "); if(pend.length) det+=" · falta "+fmtMoney(pend.reduce((a,m)=>a+Number(m.importe||0),0)); }
+    else if(pend.length){ chip=`<span class="al-chip wait">Por cobrar ${fmtMoney(pend.reduce((a,m)=>a+Number(m.importe||0),0))}</span>`; det="Todavía no llegó"; }
+    else { chip=`<span class="al-chip none">Sin registrar</span>`; det="Tocá para agregar"; }
+    filas+=`<div class="al-row" onclick="openAlimMes('${cur.mes}',${cur.anio})"><div><div class="al-m">${cur.mes}${cur.anio!==currentAnio?" "+cur.anio:""}</div><div class="al-d">${det}</div></div>${chip}</div>`;
+    cur=mesAnterior(cur.mes,cur.anio);
+  }
+  const anio=todos.filter(m=>m.estado==="Pagado"&&m.anio===currentAnio).reduce((a,m)=>a+Number(m.importe||0),0);
+  html+=`<div class="al-tot">Recibido en ${currentAnio}: <b>${fmtMoney(anio)}</b></div>${filas}<button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="openAlimPago()">+ Registrar pago recibido</button>`;
+  el.innerHTML=html;
+}
+window.openAlimMes=function(mes,anio){
+  window._alimAbierto={mes,anio};
+  const ms=alimMovs(mes,anio);
+  document.getElementById("modalBody").innerHTML=`<h2>Alimentos · ${mes} ${anio}</h2>
+   ${ms.length?ms.map(m=>`<div class="al-item"><div><b>${fmtMoney(m.importe)}</b><div class="al-d">${(m.fecha||"").split("-").reverse().join("/")} · ${m.estado==="Pagado"?"✓ Recibido":"Por cobrar"}</div></div>
+     <div class="al-btns"><button class="btn" onclick="togglePagado('${m.id}');openAlimMes('${mes}',${anio})">${m.estado==="Pagado"?"Desmarcar":"✓ Llegó"}</button><button class="btn" onclick="closeModal();editMov('${m.id}')">✎</button><button class="btn" style="color:var(--rojo)" onclick="deleteMov('${m.id}')">✕</button></div></div>`).join(""):`<p class="mm-p">No hay pagos registrados en este mes.</p>`}
+   <div class="modal-actions" style="margin-top:16px"><button class="btn btn-primary" onclick="openAlimPago('${mes}',${anio})">+ Agregar pago</button><button class="btn" onclick="window._alimAbierto=null;closeModal()">Cerrar</button></div>`;
+  openModal();
+};
+window.openAlimPago=function(mes,anio){
+  mes=mes||currentMes; anio=anio||currentAnio;
+  const mi=MESES.indexOf(mes)+1, hoy=new Date(), esHoy=(hoy.getFullYear()===anio&&hoy.getMonth()+1===mi);
+  const fecha=`${anio}-${pad2(mi)}-${pad2(esHoy?hoy.getDate():5)}`;
+  const ult=state.movimientos.filter(m=>m.tipo==="Ingreso"&&m.categoria==="Alimentos").sort((a,b)=>(a.fecha||"")<(b.fecha||"")?-1:1).pop();
+  document.getElementById("modalBody").innerHTML=`<h2>Pago de Alimentos · ${mes} ${anio}</h2>
+   <div class="form-grid"><div class="form-field"><label>Día que llegó</label><input type="date" id="al_fecha" value="${fecha}"></div>
+   <div class="form-field"><label>Importe</label><input type="number" inputmode="numeric" id="al_imp" value="${ult?ult.importe:""}" placeholder="0"></div></div>
+   <label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:15px"><input type="checkbox" id="al_rep" ${ult?(ult.recurrente?"checked":""):"checked"}> Se repite todos los meses</label>
+   <label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:15px"><input type="checkbox" id="al_ya" checked> Ya llegó (marcar como recibido)</label>
+   <div class="modal-actions" style="margin-top:16px"><button class="btn btn-primary" id="al_ok">Guardar</button><button class="btn" onclick="closeModal()">Cancelar</button></div>`;
+  document.getElementById("al_ok").onclick=()=>{
+    const f=document.getElementById("al_fecha").value, imp=Number(document.getElementById("al_imp").value)||0;
+    if(!f||imp<=0){ toast("Poné el día y el importe."); return; }
+    const d=f.split("-"); const m2=MESES[parseInt(d[1])-1];
+    state.movimientos.push({id:crypto.randomUUID(),fecha:f,mesRef:m2,anio:parseInt(d[0]),tipo:"Ingreso",categoria:"Alimentos",subcategoria:"",descripcion:"Alimentos (pensión)",importe:imp,medioPago:"Transferencia",estado:document.getElementById("al_ya").checked?"Pagado":"Pendiente",observaciones:"",recurrente:document.getElementById("al_rep").checked});
+    saveState(); closeModal(); renderView(currentView); toast("Pago de Alimentos guardado.");
+  };
+  openModal();
+};
 function renderMovimientos(){
   const q=(document.getElementById("movSearch").value||"").trim().toLowerCase();
   const res=document.getElementById("movResultados"), mm=document.getElementById("mesAMes"), empty=document.getElementById("movEmpty");
@@ -1707,7 +1771,7 @@ function renderMovimientos(){
       return `<div class="mov-row" onclick="openMovActions('${m.id}')"><div class="mov-ico ${ing?'in':'out'}">${CAT_ICO[m.categoria]||(ing?"💰":"🧾")}</div><div class="mov-mid"><div class="mov-t">${m.descripcion}</div><div class="mov-s">${m.categoria||""} · ${f}</div></div><div class="mov-amt ${ing?'pos':'neg'}">${ing?"+":"−"}${fmtMoney(m.importe)}</div></div>`;}).join("")}</div>` : `<div class="empty-state">No encontré nada con «${q}».</div>`;
     return;
   }
-  res.innerHTML=""; mm.style.display="block";
+  res.innerHTML=""; mm.style.display="block"; renderAlimentos();
   // últimos 6 meses
   const meses=[]; let cur={mes:currentMes,anio:currentAnio};
   for(let i=0;i<6;i++){ meses.unshift(cur); cur=mesAnterior(cur.mes,cur.anio); }
@@ -1778,7 +1842,7 @@ window.updateImporte = function(id, value){
 window.deleteMov = function(id){
   if(!confirm("¿Eliminar este movimiento?")) return;
   state.movimientos = state.movimientos.filter(m=>m.id!==id);
-  saveState(); renderMovimientos(); toast("Movimiento eliminado.");
+  saveState(); renderView(currentView); toast("Movimiento eliminado."); if(window._alimAbierto) openAlimMes(window._alimAbierto.mes, window._alimAbierto.anio);
 };
 
 function openMovModal(mov){
@@ -2523,7 +2587,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-01.34";
+const APP_BUILD = "2026-10-01.35";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
