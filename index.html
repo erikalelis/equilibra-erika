@@ -1865,7 +1865,7 @@ window.openCuotaWA=function(){
    <div class="modal-actions" style="margin-top:12px"><a class="btn btn-primary" id="cu_wa" href="#" target="_blank" rel="noopener" style="flex:1;text-align:center;text-decoration:none">Enviar por WhatsApp</a><button class="btn" onclick="closeModal()">Cerrar</button></div>`;
   let cuFile=null;
   const $=id=>document.getElementById(id), num=id=>Number($(id).value)||0;
-  const calc=()=>{ const tot=num("cu_tot"),pct=num("cu_pct")||50,mit=Math.round(tot*pct/100); $("cu_res").innerHTML=tot?`Total <b>${fmtMoney(tot)}</b> · A pagar (${pct}%): <b>${fmtMoney(mit)}</b> · ${mes}`:"Elegí el PDF y la app calcula todo."; const nom=($("cu_nom")?$("cu_nom").value.trim():"")||cf.nombre||"[nombre]"; $("cu_msg").textContent=tot?`Hola ${nom}, espero que te encuentres bien. Ahí abajo te paso la cuota referente a ${mes}.\n\nTotal de la cuota: ${fmtMoney(tot)}\nA pagar (${pct}%): ${fmtMoney(mit)}\n\n¡Gracias! 🙏`:"Se arma solo cuando elijas el PDF."; return {tot,pct,mit,nom}; };
+  const calc=()=>{ const tot=num("cu_tot"),pct=num("cu_pct")||50,mit=Math.round(tot*pct/100); $("cu_res").innerHTML=tot?`Total <b>${fmtMoney(tot)}</b> · A pagar (${pct}%): <b>${fmtMoney(mit)}</b> · ${mes}`:"Elegí el PDF y la app calcula todo."; const nom=($("cu_nom")?$("cu_nom").value.trim():"")||cf.nombre||"[nombre]"; $("cu_msg").textContent=tot?`Hola ${nom},\n\nEspero que te encuentres bien.\n\nTe paso la cuota referente a ${mes.toLowerCase()}.\n\nTotal de la cuota: ${fmtMoney(tot)}\nA pagar (${pct}%): ${fmtMoney(mit)}\n\nGracias!`:"Se arma solo cuando elijas el PDF."; return {tot,pct,mit,nom}; };
   const aviso=()=>{ const e=state.movimientos.find(m=>m.tipo==="Ingreso"&&m.categoria==="Cuota escuela"&&m.mesRef===mes&&m.anio===anioC&&m.estado==="Pagado"); $("cu_lbl").textContent=e?"Mensaje que se va a enviar (ojo: "+mes+" ya figura como pagada)":"Mensaje que se va a enviar"; };
   ["cu_tot","cu_pct","cu_nom"].forEach(i=>{ if($(i)) $(i).oninput=calc; }); calc();
   if($("cu_cambiar")) $("cu_cambiar").onclick=(e)=>{e.preventDefault(); $("cu_datos").style.display="block";};
@@ -1893,7 +1893,7 @@ window.openCuotaWA=function(){
     if(ing){ if(ing.estado!=="Pagado") ing.importe=mit; ing.observaciones="Cuota total "+tot; }
     else state.movimientos.push({id:crypto.randomUUID(),fecha:f,mesRef:mes,anio:anioC,tipo:"Ingreso",categoria:"Cuota escuela",subcategoria:"",descripcion:"Cuota escuela ("+pct+"%)",importe:mit,medioPago:"Transferencia",estado:"Pendiente",observaciones:"Cuota total "+tot,recurrente:false});
     saveState();
-    const msg=`Hola ${cf.nombre}, espero que te encuentres bien. Ahí abajo te paso la cuota referente a ${mes}.\n\nTotal de la cuota: ${fmtMoney(tot)}\nA pagar (${pct}%): ${fmtMoney(mit)}\n\n¡Gracias! 🙏`;
+    const msg=`Hola ${cf.nombre},\n\nEspero que te encuentres bien.\n\nTe paso la cuota referente a ${mes.toLowerCase()}.\n\nTotal de la cuota: ${fmtMoney(tot)}\nA pagar (${pct}%): ${fmtMoney(mit)}\n\nGracias!`;
     // con PDF: se comparte el archivo + el mensaje (en WhatsApp elegís el chat de él y tocás enviar)
     if(cuFile && navigator.canShare && navigator.canShare({files:[cuFile]})){
       ev.preventDefault();
@@ -2800,7 +2800,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-02.52";
+const APP_BUILD = "2026-10-02.53";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
