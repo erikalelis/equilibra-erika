@@ -598,6 +598,7 @@ tbody tr:hover{background:var(--petrol-100);}
 .toast .undo{margin-left:12px; background:rgba(255,255,255,.18); color:#fff; border:0; border-radius:999px; padding:6px 14px; font-weight:700; cursor:pointer;}
 
 .bluvia-firma{text-align:center; font-size:15px; letter-spacing:.06em; color:var(--text-muted); opacity:.85; margin:34px 0 96px;}
+.mv-acc{display:flex;align-items:center;gap:10px}.mv-del{background:none;border:none;color:#B3261E;font-size:14px;padding:6px 4px;cursor:pointer}
 .mv-venc{background:none;border:none;padding:0;margin:0;font-size:inherit;font-family:inherit;color:var(--text-muted);cursor:pointer}
 /* Toast */
 .toast{
@@ -1256,7 +1257,7 @@ function movCard(m){
     <div class="mv-top"><div class="mv-n" onclick="openMovActions('${m.id}')">${m.descripcion}</div>
       <button class="mv-a ${ing?"ing":"gas"}" onclick="editImporte('${m.id}')" aria-label="Cambiar importe">${fmtMoneyHTML(m.importe)}</button></div>
     <div class="mv-bot"><div class="mv-m">${meta}${venc?`<div>${venc}</div>`:""}</div>
-      <button class="mv-bt ${hecho?"ok":"por"}" onclick="togglePagado('${m.id}')">${txtBtn}</button></div>
+      <div class="mv-acc"><button class="mv-del" onclick="deleteMov('${m.id}')" aria-label="Borrar">🗑 Borrar</button><button class="mv-bt ${hecho?"ok":"por"}" onclick="togglePagado('${m.id}')">${txtBtn}</button></div></div>
   </div>`;
 }
 function parseImporteAR(txt){
@@ -2936,7 +2937,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-02.64";
+const APP_BUILD = "2026-10-02.65";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
