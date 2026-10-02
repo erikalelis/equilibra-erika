@@ -414,22 +414,24 @@ tbody tr:hover{background:var(--petrol-100);}
 
 
 /* Tarjetas de ingresos y gastos (Inicio) */
-.mv-item{display:flex; gap:10px; align-items:center; background:var(--card); border:1px solid var(--border); border-radius:18px; padding:10px 14px; box-shadow:var(--shadow);}
-.mv-item.hecho{background:var(--card);}
-.mv-l{flex:1; min-width:0;}
-.mv-n{font-size:15.5px; font-weight:700; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text);}
-.mv-m{font-size:13px; color:var(--text-muted); margin-bottom:7px;}
-.mv-bt{display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:5px 12px; font-size:13px; font-weight:700; border:0; cursor:pointer;}
-.mv-bt.por{background:var(--dorado-bg); color:#9A6A1F; box-shadow:inset 0 0 0 1.5px #E8CF9A;}
-.mv-bt.ok{background:var(--verde-bg); color:#2F8A66; box-shadow:inset 0 0 0 1.5px #A9D5BF;}
-.mv-r{text-align:right; border-left:1px solid var(--border); padding-left:12px; min-width:108px; flex-shrink:0; cursor:pointer;}
-.mv-a{font-size:18px; font-weight:800; letter-spacing:-.3px; font-variant-numeric:tabular-nums; white-space:nowrap;}
-.mv-a small{font-size:11.5px; font-weight:600; color:var(--text-muted); letter-spacing:0;}
+.mv-list{display:flex; flex-direction:column; gap:8px;}
+.mv-item{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:12px 14px; box-shadow:var(--shadow);}
+.mv-top{display:flex; justify-content:space-between; align-items:baseline; gap:12px;}
+.mv-n{font-size:16px; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;}
+.mv-a{font-size:19px; font-weight:800; letter-spacing:-.3px; font-variant-numeric:tabular-nums; white-space:nowrap; cursor:pointer; text-decoration:underline dotted; text-decoration-color:rgba(102,117,127,.5); text-underline-offset:5px; background:none; border:0; padding:0; font-family:inherit;}
+.mv-a small{font-size:12px; font-weight:600; color:var(--text-muted);}
 .mv-a.ing{color:#2F8A66;} .mv-a.gas{color:var(--rojo);}
-.mv-ed{font-size:12px; color:var(--petrol-600); font-weight:700; margin-top:2px; background:none; border:0; padding:4px 0; cursor:pointer;}
-.mv-sub{font-size:13px; color:var(--text-muted); margin:0 2px 10px;}
-.mv-sub b{color:#2F8A66;}
-.mv-sep{font-size:13px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em; margin:14px 2px 2px;}
+.mv-bot{display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:8px;}
+.mv-m{font-size:13px; color:var(--text-muted); min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.mv-bt{display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:5px 12px; font-size:12.5px; font-weight:700; border:0; cursor:pointer; flex-shrink:0;}
+.mv-bt.por{background:var(--dorado-bg); color:#9A6A1F;}
+.mv-bt.ok{background:var(--verde-bg); color:#2F8A66;}
+.mv-item.hecho .mv-n{color:var(--text-muted);}
+.mv-sub{margin:0 2px 10px;}
+.mv-sub .t{font-size:13px; color:var(--text-muted);} .mv-sub .t b{color:#2F8A66;}
+.mv-bar{height:6px; border-radius:99px; background:var(--border); margin-top:6px; overflow:hidden;}
+.mv-bar i{display:block; height:100%; background:#4C9A7A; border-radius:99px;}
+.mv-sep{font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; margin:16px 2px 8px;}
 .imp-big{width:100%; font-size:30px; font-weight:800; text-align:right; padding:14px 16px; border:2px solid var(--petrol-600); border-radius:14px; background:var(--bg); color:var(--text); font-variant-numeric:tabular-nums;}
 .toast .undo{margin-left:12px; background:rgba(255,255,255,.18); color:#fff; border:0; border-radius:999px; padding:6px 14px; font-weight:700; cursor:pointer;}
 
@@ -1017,12 +1019,14 @@ function movCard(m){
   const dia = m.fecha ? m.fecha.split("-")[2] : "—";
   const txtBtn = ing ? (hecho?"✓ Cobrado":"Por cobrar") : (hecho?"✓ Pagado":"Por pagar");
   const conDia = m.origenPrestamo || m.origenTarjeta || m.recurrente; // solo si el día es real, no el 01 por defecto
-  const meta = !conDia ? `${m.categoria}` : (ing ? `${m.categoria} · día ${dia}` : `${m.categoria} · vence día ${dia}`);
+  const cat = (m.categoria===m.descripcion) ? "" : m.categoria;
+  const meta = !conDia ? cat : (cat?cat+" · ":"")+(ing ? `día ${dia}` : `vence día ${dia}`); void 0;
+  const _old = !conDia ? `${m.categoria}` : (ing ? `${m.categoria} · día ${dia}` : `${m.categoria} · vence día ${dia}`);
   return `<div class="mv-item${hecho?" hecho":""}">
-    <div class="mv-l"><div class="mv-n">${m.descripcion}</div><div class="mv-m">${meta}</div>
+    <div class="mv-top"><div class="mv-n">${m.descripcion}</div>
+      <button class="mv-a ${ing?"ing":"gas"}" onclick="editImporte('${m.id}')" aria-label="Cambiar importe">${fmtMoneyHTML(m.importe)}</button></div>
+    <div class="mv-bot"><div class="mv-m">${meta}</div>
       <button class="mv-bt ${hecho?"ok":"por"}" onclick="togglePagado('${m.id}')">${txtBtn}</button></div>
-    <div class="mv-r" onclick="editImporte('${m.id}')" role="button" aria-label="Cambiar importe"><div class="mv-a ${ing?"ing":"gas"}">${fmtMoneyHTML(m.importe)}</div>
-      <div class="mv-ed">✎</div></div>
   </div>`;
 }
 function parseImporteAR(txt){
@@ -1313,9 +1317,10 @@ function renderPendientes(){
   const list = document.getElementById("pendList");
   const empty = document.getElementById("pendEmpty");
   empty.style.display = (pend.length===0 && pag.length>0) ? "block" : "none";
-  let html = gs.length ? `<p class="mv-sub">Ya pagaste <b>${fmtMoney(suma(pag))}</b> de ${fmtMoney(suma(gs))}</p>` : "";
-  html += pend.map(movCard).join("");
-  if(pag.length) html += `<div class="mv-sep">Ya pagados (${pag.length})</div>` + pag.map(movCard).join("");
+  const pct = suma(gs)>0 ? Math.round(suma(pag)/suma(gs)*100) : 0;
+  let html = gs.length ? `<div class="mv-sub"><div class="t">Ya pagaste <b>${fmtMoney(suma(pag))}</b> de ${fmtMoney(suma(gs))}</div><div class="mv-bar"><i style="width:${pct}%"></i></div></div>` : "";
+  html += `<div class="mv-list">${pend.map(movCard).join("")}</div>`;
+  if(pag.length) html += `<div class="mv-sep">Ya pagados (${pag.length})</div><div class="mv-list">${pag.map(movCard).join("")}</div>`;
   list.innerHTML = html;
 }
 function renderDesglose(tot){
@@ -1341,7 +1346,7 @@ function renderIngresos(){
   const total = ing.reduce((a,m)=>a+Number(m.importe||0),0);
   document.getElementById("ingCount").textContent = "";
   document.getElementById("ingList").innerHTML = ing.length
-    ? `<p class="mv-sub">Ya cobraste <b>${fmtMoney(recibido)}</b> de ${fmtMoney(total)}</p>` + ing.map(movCard).join("")
+    ? `<div class="mv-sub"><div class="t">Ya cobraste <b>${fmtMoney(recibido)}</b> de ${fmtMoney(total)}</div><div class="mv-bar"><i style="width:${total>0?Math.round(recibido/total*100):0}%"></i></div></div><div class="mv-list">${ing.map(movCard).join("")}</div>`
     : `<div class="empty-state">No hay ingresos cargados en ${currentMes}.</div>`;
 }
 function renderCubrirMes(tot){
@@ -2387,7 +2392,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-01.19";
+const APP_BUILD = "2026-10-01.20";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
