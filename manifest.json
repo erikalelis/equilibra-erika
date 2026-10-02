@@ -3,7 +3,7 @@
   "short_name": "Equilibra",
   "description": "Control financiero personal: gastos, ingresos, tarjetas y préstamos.",
   "start_url": ".",
-  "id": ".",
+  "id": "equilibra-app-2",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0B2E38",
