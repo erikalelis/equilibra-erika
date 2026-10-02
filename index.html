@@ -220,21 +220,21 @@ main.content{padding:18px 16px calc(96px + env(safe-area-inset-bottom,0px)) 16px
 @keyframes popV{50%{transform:scale(1.06)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .hero-frase{position:relative;z-index:1;font-size:14px;margin-top:6px;opacity:.92;font-weight:500}
-.dona-card{background:var(--card,#fff);border-radius:20px;padding:16px;margin:14px 0;box-shadow:0 6px 20px rgba(10,40,50,.08);display:flex;gap:16px;align-items:center}
+.dona-card{background:var(--card,#fff);border-radius:20px;padding:16px;margin:14px 0;box-shadow:0 6px 20px rgba(10,40,50,.08);display:flex;flex-direction:column;gap:14px;align-items:center}
 .dona-card:empty{display:none}
-.dona-wrap{position:relative;width:132px;height:132px;flex:none}
-.dona-wrap svg{width:132px;height:132px;transform:rotate(-90deg)}
-.dona-wrap circle.seg{fill:none;stroke-width:6;stroke-linecap:butt;animation:donaIn .9s ease-out both}
+.dona-wrap{position:relative;width:230px;height:230px;flex:none}
+.dona-wrap svg{width:230px;height:230px;transform:rotate(-90deg)}
+.dona-wrap circle.seg{fill:none;stroke-width:7;stroke-linecap:butt;animation:donaIn .9s ease-out both}
 @keyframes donaIn{from{stroke-dasharray:0 100}}
 .dona-centro{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
-.dona-centro small{font-size:10px;color:var(--text-muted,#6b7a80)}
-.dona-centro b{font-size:14px;font-family:var(--font-display);line-height:1.1}
-.dona-leg{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px}
-.dona-leg div{display:flex;align-items:center;gap:8px;font-size:13px}
-.dona-leg i{width:10px;height:10px;border-radius:50%;flex:none}
+.dona-centro small{font-size:13px;color:var(--text-muted,#6b7a80)}
+.dona-centro b{font-size:24px;font-family:var(--font-display);line-height:1.1}
+.dona-leg{width:100%;min-width:0;display:flex;flex-direction:column;gap:9px}
+.dona-leg div{display:flex;align-items:center;gap:10px;font-size:15px}
+.dona-leg i{width:12px;height:12px;border-radius:50%;flex:none}
 .dona-leg span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dona-leg em{font-style:normal;font-weight:700}
-.dona-tit{font-size:12px;color:var(--text-muted,#6b7a80);margin-bottom:2px}
+.dona-tit{font-size:14px;font-weight:600;color:var(--text-muted,#6b7a80);margin-bottom:2px}
 .hero-value{font-family:var(--font-display); font-size:37px; font-weight:600; margin-top:8px; position:relative; z-index:1; line-height:1.1;}
 .hero-value.neg{color:#FFD3CE;}
 .hero-stats{display:flex; gap:22px; margin-top:16px; position:relative; z-index:1;}
@@ -1293,7 +1293,7 @@ function renderDona(tot){
   const segs=arr.map(([k,v],i)=>{const p=v/total*100;const g=Math.max(p-1.2,0.5);const o=-acc;acc+=p;
     return `<circle class="seg" cx="21" cy="21" r="14" stroke="${col[i]}" stroke-dasharray="${g} ${100-g}" stroke-dashoffset="${o}" pathLength="100"/>`;}).join("");
   const leg=arr.map(([k,v],i)=>`<div><i style="background:${col[i]}"></i><span>${k}</span><em>${Math.round(v/total*100)}%</em></div>`).join("");
-  el.innerHTML=`<div class="dona-wrap"><svg viewBox="0 0 42 42"><circle cx="21" cy="21" r="14" fill="none" stroke="#eef2f3" stroke-width="6"/>${segs}</svg><div class="dona-centro"><small>Gastos</small><b>${fmtMoney(total)}</b></div></div><div class="dona-leg"><div class="dona-tit">¿A dónde se va tu plata?</div>${leg}</div>`;
+  el.innerHTML=`<div class="dona-tit">¿A dónde se va tu plata?</div><div class="dona-wrap"><svg viewBox="0 0 42 42"><circle cx="21" cy="21" r="14" fill="none" stroke="#eef2f3" stroke-width="7"/>${segs}</svg><div class="dona-centro"><small>Gastos</small><b>${fmtMoney(total)}</b></div></div><div class="dona-leg">${leg}</div>`;
 }
 function renderInicio(){
   const tot = totalesDelMes(currentMes, currentAnio);
@@ -2451,7 +2451,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-01.28";
+const APP_BUILD = "2026-10-01.29";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
