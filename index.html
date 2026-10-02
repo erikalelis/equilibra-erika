@@ -1300,7 +1300,7 @@ function movsDelMes(mes, anio){
 function totalesDelMes(mes, anio){
   const movs = movsDelMes(mes, anio);
   if(movs.length>0){
-    const ingresos = movs.filter(m=>m.tipo==="Ingreso").reduce((a,m)=>a+Number(m.importe||0),0);
+    const ingresos = movs.filter(m=>m.tipo==="Ingreso" && !(m.categoria==="Cuota escuela" && m.estado!=="Pagado")).reduce((a,m)=>a+Number(m.importe||0),0);
     const gastos = movs.filter(m=>m.tipo==="Gasto").reduce((a,m)=>a+Number(m.importe||0),0);
     return {ingresos, gastos, resultado: ingresos-gastos, sinDetalle:false};
   }
@@ -2936,7 +2936,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-02.62";
+const APP_BUILD = "2026-10-02.63";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
