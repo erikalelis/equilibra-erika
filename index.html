@@ -310,6 +310,15 @@ main.content{padding:18px 16px calc(96px + env(safe-area-inset-bottom,0px)) 16px
 .tj-bar i{display:block;height:100%;border-radius:99px;transition:width .7s}
 .tj-pie{display:flex;justify-content:space-between;gap:8px;font-size:14px;position:relative;z-index:1}
 .tj-ej{margin-top:10px;font-size:13px;background:rgba(0,0,0,.2);display:inline-block;padding:4px 10px;border-radius:99px}
+
+.ct-top{display:flex;gap:14px;align-items:center;background:linear-gradient(135deg,#145366,#2E8F97);color:#fff;border-radius:18px;padding:14px;margin-bottom:10px}
+.ct-top small{display:block;font-size:13px;opacity:.85}.ct-top b{display:block;font-size:22px;font-family:var(--font-display);margin:2px 0}.ct-top span{font-size:14.5px}
+.ct-ico{width:52px;height:52px;border-radius:16px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:26px;flex:none}
+.ct-ico.s{width:40px;height:40px;border-radius:13px;font-size:19px;background:#EEF3F4}
+.ct-row{display:flex;align-items:center;gap:12px;padding:10px 2px;border-top:1px solid var(--border)}
+.ct-n{flex:1;font-size:16px;font-weight:600}
+.ct-v{text-align:right}.ct-v b{display:block;font-size:16px}.ct-v small{font-size:13px;color:var(--text-muted)}
+.ct-t{font-size:13px;font-weight:700;min-width:54px;text-align:right}.ct-t.neg{color:#B4413A}.ct-t.pos{color:#2E8F6B}
 .hero-frase{position:relative;z-index:1;font-size:15.5px;margin-top:6px;opacity:.92;font-weight:500}
 .dona-card{background:var(--card,#fff);border-radius:20px;padding:16px;margin:14px 0;box-shadow:0 6px 20px rgba(10,40,50,.08);display:flex;flex-direction:column;gap:14px;align-items:center}
 .dona-card:empty{display:none}
@@ -1917,11 +1926,13 @@ function renderMovimientos(){
   // categorías
   const cn=gastosPorCategoria(currentMes,currentAnio), pm=mesAnterior(currentMes,currentAnio), cp=gastosPorCategoria(pm.mes,pm.anio);
   const arr=Object.entries(cn).filter(([k,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,6);
-  const mx=arr.length?arr[0][1]:1;
-  document.getElementById("mmCats").innerHTML=arr.length?arr.map(([k,v])=>{
-    const p=cp[k]||0; let d="";
-    if(p>0){ const x=Math.round((v-p)/p*100); if(x!==0) d=`<small class="${x>0?'neg':'pos'}">${x>0?"▲":"▼"} ${Math.abs(x)}%</small>`; }
-    return `<div class="mm-cat"><div class="mm-cat-top"><span>${CAT_ICO[k]||"🧾"} ${k}</span><b>${fmtMoney(v)}</b></div><div class="mm-cat-bar"><i style="width:${Math.round(v/mx*100)}%"></i></div>${d}</div>`;}).join(""):`<p class="mm-p">Todavía no hay gastos cargados este mes.</p>`;
+  const totc=Object.values(cn).reduce((a,v)=>a+v,0)||1;
+  const trend=(k,v)=>{ const p=cp[k]||0; if(!(p>0)) return ""; const x=Math.round((v-p)/p*100); return x===0?"":`<span class="ct-t ${x>0?'neg':'pos'}">${x>0?"▲":"▼"} ${Math.abs(x)}%</span>`; };
+  document.getElementById("mmCats").innerHTML=arr.length?(()=>{
+    const [k0,v0]=arr[0];
+    return `<div class="ct-top"><div class="ct-ico">${CAT_ICO[k0]||"🧾"}</div><div><small>Lo que más pesa este mes</small><b>${k0}</b><span>${fmtMoney(v0)} · ${Math.round(v0/totc*100)}% de tus gastos</span></div></div>`+
+    arr.slice(1).map(([k,v])=>`<div class="ct-row"><div class="ct-ico s">${CAT_ICO[k]||"🧾"}</div><div class="ct-n">${k}</div><div class="ct-v"><b>${fmtMoney(v)}</b><small>${Math.round(v/totc*100)}%</small></div>${trend(k,v)}</div>`).join("");
+  })():`<p class="mm-p">Todavía no hay gastos cargados este mes.</p>`;
 }
 window.openMovActions = function(id){
   const m = state.movimientos.find(x=>x.id===id);
@@ -2710,7 +2721,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-01.40";
+const APP_BUILD = "2026-10-01.41";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
