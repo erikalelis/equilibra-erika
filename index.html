@@ -679,8 +679,8 @@ tbody tr:hover{background:var(--petrol-100);}
         <div id="movResultados"></div>
         <div id="mesAMes">
                     <div class="mm-card" id="mmComp"></div>
-          <div class="mm-card" id="mmAlim"></div>
           <div class="mm-card"><div class="mm-tit">En qué gastaste más</div><div id="mmCats"></div></div>
+          <div class="mm-card" id="mmAlim"></div>
         </div>
         <div class="mov-list" id="movList" style="display:none"></div>
         <div class="empty-state" id="movEmpty" style="display:none">No hay movimientos cargados uno por uno para este mes. Si en Inicio ves un total, es el resumen histórico — usá «Nuevo movimiento» para empezar a cargar el detalle.</div>
@@ -796,7 +796,7 @@ const SEED_VERSION = 3;
 
 const MENU = [
   {id:"inicio", label:"Inicio", soon:false},
-  {id:"movimientos", label:"Panorama", soon:false},
+  {id:"movimientos", label:"Mi plata", soon:false},
   {id:"recurrentes", label:"Gastos recurrentes", soon:false},
   {id:"tarjetas", label:"Tarjetas", soon:false},
   {id:"deudas", label:"Préstamos", soon:false},
@@ -970,9 +970,23 @@ function ajustesMia(st){
   });
   st._ajustesMia1 = true;
 }
+// Pagos de Alimentos ya recibidos (de la planilla de Érika). Se cargan una sola vez si todavía no hay ninguno.
+function ajustesAlimentos(st){
+  if(st._alimSeed1) return;
+  st._alimSeed1 = true;
+  if((st.movimientos||[]).some(m=>m.tipo==="Ingreso" && m.categoria==="Alimentos")) return;
+  [["2026-01-05",510934.65,"Pensión y aguinaldo"],["2026-02-06",325436.20,""],["2026-03-09",411010.23,""],["2026-04-06",326586.20,""],
+   ["2026-05-05",360713.37,""],["2026-06-04",337255.90,""],["2026-07-06",522000,"Pensión y aguinaldo"],["2026-08-06",354551.44,""]].forEach(([f,imp,obs])=>{
+    const mi = parseInt(f.split("-")[1]);
+    st.movimientos.push({ id:crypto.randomUUID(), fecha:f, mesRef:MESES[mi-1], anio:2026, tipo:"Ingreso", categoria:"Alimentos", subcategoria:"",
+      descripcion:"Alimentos (pensión)", importe:imp, medioPago:"Transferencia", estado:"Pagado", observaciones:obs, recurrente:false });
+  });
+  if(st===state) try{ saveState(); }catch(e){}
+}
 function sincronizarMes(mes, anio, st, forzar){
   st = st || state;
   ajustesMia(st);
+  ajustesAlimentos(st);
   if((st.deudas||[]).some(d=>RENOMBRAR_PRESTAMOS[d.nombre])) actualizarMovsPrestamos(st);
   const ym = ymStr(mes, anio);
   if(ym < SYNC_DESDE) return 0;
@@ -1214,7 +1228,7 @@ function dotIcon(){
 /* ---------- Bottom tab bar (formato app) ---------- */
 const BOTTOM_TABS = [
   {id:"inicio", label:"Inicio", icon:"home"},
-  {id:"movimientos", label:"Panorama", icon:"list"},
+  {id:"movimientos", label:"Mi plata", icon:"list"},
   {id:"tarjetas", label:"Tarjetas", icon:"card"},
   {id:"deudas", label:"Préstamos", icon:"debt"},
   {id:"mas", label:"Más", icon:"more"},
@@ -1287,7 +1301,7 @@ function switchView(item){
 function subtitleFor(id){
   return {
     inicio:"Resumen ejecutivo del mes",
-    movimientos:"Cómo vienen tus meses y tus Alimentos",
+    movimientos:"Cómo vas este mes, tus gastos y tus Alimentos",
     recurrentes:"Gastos que se repiten cada mes",
     tarjetas:"Tarjetas, cuotas y simulador",
     deudas:"Tus cuotas mes a mes",
@@ -2634,7 +2648,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-01.38";
+const APP_BUILD = "2026-10-01.39";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
