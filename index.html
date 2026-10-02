@@ -1252,12 +1252,12 @@ function movCard(m){
   const meta = (!conDia || !ing) ? cat : (cat?cat+" · ":"")+`día ${dia}`; void 0;
   const _old = !conDia ? `${m.categoria}` : (ing ? `${m.categoria} · día ${dia}` : `${m.categoria} · vence día ${dia}`);
   const mm=m.fecha?m.fecha.split("-"):[], fechaTxt=m.fecha?`${parseInt(mm[2])}/${parseInt(mm[1])}`:"—";
-  const venc = (!ing && !hecho) ? `<button class="mv-venc" onclick="openVencimiento('${m.id}')">Vencimiento ${fechaTxt}</button>` : "";
-  return `<div class="mv-item${hecho?" hecho":""}">
-    <div class="mv-top"><div class="mv-n" onclick="openMovActions('${m.id}')">${m.descripcion}</div>
-      <button class="mv-a ${ing?"ing":"gas"}" onclick="editImporte('${m.id}')" aria-label="Cambiar importe">${fmtMoneyHTML(m.importe)}</button></div>
+  const venc = (!ing && !hecho) ? `<button class="mv-venc" onclick="event.stopPropagation();openVencimiento('${m.id}')">Vencimiento ${fechaTxt}</button>` : "";
+  return `<div class="mv-item${hecho?" hecho":""}" onclick="openMovActions('${m.id}')">
+    <div class="mv-top"><div class="mv-n">${m.descripcion}</div>
+      <button class="mv-a ${ing?"ing":"gas"}" onclick="event.stopPropagation();editImporte('${m.id}')" aria-label="Cambiar importe">${fmtMoneyHTML(m.importe)}</button></div>
     <div class="mv-bot"><div class="mv-m">${meta}${venc?`<div>${venc}</div>`:""}</div>
-      <div class="mv-acc"><button class="mv-del" onclick="deleteMov('${m.id}')" aria-label="Borrar">🗑 Borrar</button><button class="mv-bt ${hecho?"ok":"por"}" onclick="togglePagado('${m.id}')">${txtBtn}</button></div></div>
+      <button class="mv-bt ${hecho?"ok":"por"}" onclick="event.stopPropagation();togglePagado('${m.id}')">${txtBtn}</button></div>
   </div>`;
 }
 function parseImporteAR(txt){
@@ -2937,7 +2937,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-02.65";
+const APP_BUILD = "2026-10-02.66";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
