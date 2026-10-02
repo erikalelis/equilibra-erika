@@ -230,6 +230,28 @@ main.content{padding:18px 16px calc(96px + env(safe-area-inset-bottom,0px)) 16px
 .mv-det summary{cursor:pointer;font-size:14.5px;font-weight:700;color:var(--text-muted);padding:10px 4px;list-style:none}
 .mv-det summary::before{content:"▸ "}.mv-det[open] summary::before{content:"▾ "}
 .inicio-subtab{flex:1;padding-left:6px;padding-right:6px;font-size:15px}
+
+.mov-resumen{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.mov-resumen div{background:#fff;border-radius:16px;padding:10px 6px;text-align:center;box-shadow:0 4px 14px rgba(10,40,50,.07)}
+.mov-resumen small{display:block;font-size:12.5px;color:var(--text-muted);margin-bottom:2px}
+.mov-resumen b{font-size:15.5px;font-family:var(--font-display)}
+.mov-resumen b.pos{color:#2E8F6B}.mov-resumen b.neg{color:#B4413A}
+.mov-filtros{display:flex;gap:8px;margin-bottom:12px}
+.mov-filtros .seg{flex:1;padding:10px 6px;border-radius:999px;border:1px solid var(--border);background:#fff;font-size:15px;font-weight:600;color:var(--text-muted);font-family:inherit}
+.mov-filtros .seg.active{background:var(--petrol-700);border-color:var(--petrol-700);color:#fff}
+.mov-dia{font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:16px 4px 8px}
+.mov-card-list{background:#fff;border-radius:20px;box-shadow:0 6px 20px rgba(10,40,50,.08);overflow:hidden;animation:vIn .4s ease-out both}
+.mov-row{display:flex;align-items:center;gap:12px;padding:13px 14px;border-bottom:1px solid var(--border);cursor:pointer}
+.mov-row:last-child{border-bottom:0}
+.mov-row:active{background:#f4f7f8}
+.mov-ico{width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px;flex:none}
+.mov-ico.out{background:#FBEDEA}.mov-ico.in{background:#E6F4EE}
+.mov-mid{flex:1;min-width:0}
+.mov-t{font-size:16.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mov-s{font-size:13.5px;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mov-pend{color:#B8841A;font-weight:600}
+.mov-amt{font-size:16.5px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mov-amt.pos{color:#2E8F6B}.mov-amt.neg{color:#B4413A}
 .hero-frase{position:relative;z-index:1;font-size:15.5px;margin-top:6px;opacity:.92;font-weight:500}
 .dona-card{background:var(--card,#fff);border-radius:20px;padding:16px;margin:14px 0;box-shadow:0 6px 20px rgba(10,40,50,.08);display:flex;flex-direction:column;gap:14px;align-items:center}
 .dona-card:empty{display:none}
@@ -616,19 +638,18 @@ tbody tr:hover{background:var(--petrol-100);}
 
       <!-- MOVIMIENTOS -->
       <section class="view" id="view-movimientos">
-        <div class="toolbar">
-          <div class="toolbar-left">
-            <input class="search-input" id="movSearch" placeholder="Buscar movimiento…">
-            <select class="period" id="filtTipo"><option value="">Todos los tipos</option><option value="Ingreso">Ingreso</option><option value="Gasto">Gasto</option></select>
-            <select class="period" id="filtCategoria"><option value="">Todas las categorías</option></select>
-            <select class="period" id="filtEstado"><option value="">Todos los estados</option><option value="Pagado">Pagado</option><option value="Pendiente">Pendiente</option></select>
-          </div>
-          <div class="toolbar-left">
-            <button class="btn" id="btnDeleteSel">Eliminar selección</button>
-          </div>
+        <div class="mov-resumen" id="movResumen"></div>
+        <div class="mov-filtros">
+          <button class="seg active" data-t="" onclick="setMovTipo(this)">Todos</button>
+          <button class="seg" data-t="Gasto" onclick="setMovTipo(this)">Gastos</button>
+          <button class="seg" data-t="Ingreso" onclick="setMovTipo(this)">Ingresos</button>
         </div>
-        <div class="mov-list-head">
-          <label class="mov-selall"><input type="checkbox" id="selAll"> Seleccionar todo</label>
+        <input class="search-input" id="movSearch" placeholder="🔍 Buscar movimiento…" style="width:100%;margin-bottom:12px">
+        <div style="display:none">
+          <select id="filtTipo"><option value=""></option><option value="Ingreso"></option><option value="Gasto"></option></select>
+          <select id="filtCategoria"><option value=""></option></select>
+          <select id="filtEstado"><option value=""></option></select>
+          <input type="checkbox" id="selAll"><button id="btnDeleteSel"></button>
         </div>
         <div class="mov-list" id="movList"></div>
         <div class="empty-state" id="movEmpty" style="display:none">No hay movimientos cargados uno por uno para este mes. Si en Inicio ves un total, es el resumen histórico — usá «Nuevo movimiento» para empezar a cargar el detalle.</div>
@@ -1645,47 +1666,48 @@ function populateCategoryFilter(){
   const all = [...CAT_INGRESO, ...CAT_GASTO];
   sel.innerHTML = `<option value="">Todas las categorías</option>` + all.map(c=>`<option value="${c}">${c}</option>`).join("");
 }
+const CAT_ICO={"Vivienda":"🏠","Alimentación":"🛒","Supermercado":"🛒","Alimentos":"🛒","Servicios":"💡","Préstamos":"🏦","Tarjetas":"💳","Salud y bienestar":"💪","Salud":"💪","Educación":"🎓","Transporte":"🚗","Ahorro":"🐷","Sueldo":"💼","Otros ingresos":"✨","Ocio":"🎉"};
+window.setMovTipo=function(btn){
+  document.getElementById("filtTipo").value=btn.dataset.t;
+  document.querySelectorAll(".mov-filtros .seg").forEach(x=>x.classList.toggle("active",x===btn));
+  renderMovimientos();
+};
 function renderMovimientos(){
   const list = document.getElementById("movList");
-  let movs = movsDelMes(currentMes, currentAnio);
+  const todos = movsDelMes(currentMes, currentAnio);
+  const sum=t=>todos.filter(m=>m.tipo===t).reduce((a,m)=>a+Number(m.importe||0),0);
+  const ent=sum("Ingreso"), sal=sum("Gasto");
+  document.getElementById("movResumen").innerHTML = todos.length ? `<div><small>Entró</small><b class="pos">${fmtMoney(ent)}</b></div><div><small>Salió</small><b class="neg">${fmtMoney(sal)}</b></div><div><small>Quedó</small><b>${fmtMoney(ent-sal)}</b></div>` : "";
+  let movs = todos;
   const q = (document.getElementById("movSearch").value||"").toLowerCase();
   const fTipo = document.getElementById("filtTipo").value;
-  const fCat = document.getElementById("filtCategoria").value;
-  const fEstado = document.getElementById("filtEstado").value;
-  if(q) movs = movs.filter(m=>(m.descripcion||"").toLowerCase().includes(q));
+  if(q) movs = movs.filter(m=>(m.descripcion||"").toLowerCase().includes(q)||(m.categoria||"").toLowerCase().includes(q));
   if(fTipo) movs = movs.filter(m=>m.tipo===fTipo);
-  if(fCat) movs = movs.filter(m=>m.categoria===fCat);
-  if(fEstado) movs = movs.filter(m=>m.estado===fEstado);
-  movs = [...movs].sort((a,b)=>{
-    let x=a[sortCol], y=b[sortCol];
-    if(sortCol==="importe"){ x=Number(x); y=Number(y); }
-    if(x<y) return -1*sortDir; if(x>y) return 1*sortDir; return 0;
-  });
+  movs = [...movs].sort((a,b)=> (b.fecha||"") < (a.fecha||"") ? -1 : (b.fecha||"") > (a.fecha||"") ? 1 : 0);
   if(movs.length===0){
     list.innerHTML=""; document.getElementById("movEmpty").style.display="block";
-  } else {
-    document.getElementById("movEmpty").style.display="none";
-    list.innerHTML = movs.map(m=>`
-      <div class="mov-item">
-        <input type="checkbox" class="rowchk" data-id="${m.id}" ${selectedIds.has(m.id)?"checked":""}>
-        <div class="mov-info">
-          <div class="mov-top-row">
-            <span class="badge badge-${m.tipo==='Ingreso'?'ingreso':'gasto'}">${m.tipo}</span>
-            <span class="mov-fecha">${m.fecha||""}</span>
-            <span class="badge badge-${m.estado==='Pagado'?'pagado':'pendiente'}">${m.estado}</span>
-          </div>
-          <div class="mov-desc">${m.descripcion}</div>
-          <div class="mov-meta">${m.categoria}${m.medioPago?" · "+m.medioPago:""}${m.recurrente?" · Recurrente":""}</div>
-        </div>
-        <div class="mov-right">
-          <div class="mov-importe ${m.tipo==='Ingreso'?'pos':'neg'}">${fmtMoney(m.importe)}</div>
-          <button class="icon-btn" onclick="openMovActions('${m.id}')" title="Más acciones">⋮</button>
-        </div>
-      </div>`).join("");
+    return;
   }
-  document.querySelectorAll(".rowchk").forEach(chk=>{
-    chk.onchange = ()=>{ chk.checked ? selectedIds.add(chk.dataset.id) : selectedIds.delete(chk.dataset.id); };
+  document.getElementById("movEmpty").style.display="none";
+  const DIAS=["dom","lun","mar","mié","jue","vie","sáb"], MESES=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+  let html="", last=null;
+  movs.forEach(m=>{
+    const f=m.fecha||"";
+    if(f!==last){
+      last=f; let tit="Sin fecha";
+      if(f){ const d=new Date(f+"T12:00:00"); if(!isNaN(d)) tit=`${DIAS[d.getDay()]} ${d.getDate()} ${MESES[d.getMonth()]}`; }
+      if(html) html+=`</div>`;
+      html+=`<div class="mov-dia">${tit}</div><div class="mov-card-list">`;
+    }
+    const ing=m.tipo==="Ingreso", pend=m.estado!=="Pagado";
+    html+=`<div class="mov-row" onclick="openMovActions('${m.id}')">
+      <div class="mov-ico ${ing?'in':'out'}">${CAT_ICO[m.categoria]||(ing?"💰":"🧾")}</div>
+      <div class="mov-mid"><div class="mov-t">${m.descripcion}</div>
+        <div class="mov-s">${m.categoria||""}${pend?` · <span class="mov-pend">${ing?"Por cobrar":"Por pagar"}</span>`:""}</div></div>
+      <div class="mov-amt ${ing?'pos':'neg'}">${ing?"+":"−"}${fmtMoney(m.importe)}</div>
+    </div>`;
   });
+  list.innerHTML = html+"</div>";
 }
 window.openMovActions = function(id){
   const m = state.movimientos.find(x=>x.id===id);
@@ -2475,7 +2497,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-01.31";
+const APP_BUILD = "2026-10-01.32";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
