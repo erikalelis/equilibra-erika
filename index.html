@@ -503,6 +503,8 @@ main.content{padding:18px 16px calc(96px + env(safe-area-inset-bottom,0px)) 16px
 .mas-item{display:flex; flex-direction:column; align-items:flex-start; gap:3px; text-align:left; width:100%; padding:15px 16px; border:1px solid var(--border); border-radius:14px; background:var(--card); color:var(--text);}
 .mas-item strong{font-size:17px; font-weight:600;}
 .mas-item span{font-size:14px; color:var(--text-muted);}
+.av-item{background:#FFF7E0;border:1px solid #F0D58A;border-radius:12px;padding:10px 12px;margin:0 0 8px;font-size:15px;color:#5a4300}.av-rojo{background:#FDECEC;border-color:#F2B8B8;color:#8A1F1F;font-weight:600}
+.al-chip.late{background:#FDECEC;color:#B3261E;border:1px solid #F2B8B8}
 .respaldo-nota{font-size:13px; color:var(--text-muted); text-align:center; margin:26px 0 8px 0;}
 .respaldo-nota button{background:none; border:none; color:var(--petrol-600); font-size:13px; text-decoration:underline; padding:0 2px; cursor:pointer;}
 
@@ -1343,6 +1345,8 @@ function openMasSheet(){
   document.getElementById("modalBody").innerHTML = `
     <h2>Más</h2>
     <div class="mas-lista">${items}</div>
+    <h3 class="mas-titulo">Avisos</h3>
+    <div class="mas-lista"><button class="mas-item" id="masAvisos"><strong>Avisos y recordatorios</strong><span>Vencimientos, pedir la cuota, cuota sin pago.</span></button></div>
     <h3 class="mas-titulo">Tus datos</h3>
     <div class="mas-lista">
       <button class="mas-item" id="masBackup"><strong>Guardar respaldo</strong><span>Descarga una copia de todo lo que cargaste.</span></button>
@@ -1353,6 +1357,7 @@ function openMasSheet(){
   document.querySelectorAll('[data-mas]').forEach(btn=>{
     btn.onclick = ()=>{ closeModal(); switchView(MENU.find(m=>m.id===btn.dataset.mas)); };
   });
+  document.getElementById("masAvisos").onclick = ()=>{ closeModal(); openAvisos(); };
   document.getElementById("masBackup").onclick = ()=>{ closeModal(); document.getElementById("btnBackup").click(); };
   document.getElementById("masRestore").onclick = ()=>{ closeModal(); document.getElementById("btnRestore").click(); };
   document.getElementById("masCopias").onclick = ()=>{ closeModal(); abrirCopias(); };
@@ -1456,6 +1461,71 @@ function renderChips(){
   const o=heroOculto?"••••":null;
   cr.innerHTML=`<div class="chip c-red"><small>Por pagar</small><b>${o||fmtMoney(porPagar)}</b></div><div class="chip c-green"><small>Ya pagado</small><b>${o||fmtMoney(pagado)}</b></div><div class="chip c-gold"><small>Por cobrar</small><b>${o||fmtMoney(porCobrar)}</b></div>`;
 }
+
+/* ===================== AVISOS Y RECORDATORIOS ===================== */
+function avCfg(){ state.config=state.config||{}; const a=state.config.avisos=state.config.avisos||{}; if(a.dias===undefined)a.dias=1; if(a.hora===undefined)a.hora=9; if(a.diaCuota===undefined)a.diaCuota=1; if(a.rojoDias===undefined)a.rojoDias=5; return a; }
+function hoyISO(){ const d=new Date(); return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate()); }
+function difDias(iso){ const [y,m,d]=iso.split("-").map(Number), h=hoyISO().split("-").map(Number); return Math.round((Date.UTC(y,m-1,d)-Date.UTC(h[0],h[1]-1,h[2]))/86400000); }
+function calcularAvisos(){
+  const a=avCfg(), out=[], hoy=new Date();
+  (state.movimientos||[]).forEach(m=>{
+    if(m.tipo==="Gasto" && m.estado==="Pendiente" && m.fecha){
+      const d=difDias(m.fecha);
+      if(d<0 && d>=-30) out.push({id:"v"+m.id,rojo:true,desde:m.fecha,texto:`Vencido hace ${-d} día${d===-1?"":"s"}: ${m.descripcion||m.categoria} · ${fmtMoney(m.importe)}`});
+      else if(d>=0 && d<=a.dias) out.push({id:"v"+m.id,rojo:d===0,desde:addDiasISO(m.fecha,-a.dias),texto:(d===0?"Vence HOY":d===1?"Vence mañana":`Vence en ${d} días`)+`: ${m.descripcion||m.categoria} · ${fmtMoney(m.importe)}`});
+    }
+    if(m.tipo==="Ingreso" && m.categoria==="Cuota escuela" && m.estado==="Pendiente" && m.enviadaEl){
+      const n=-difDias(m.enviadaEl);
+      if(n>=a.rojoDias) out.push({id:"c"+m.id,rojo:true,desde:m.enviadaEl,texto:`Todavía no te pagaron la cuota de ${m.mesRef} (enviada hace ${n} días)`});
+    }
+  });
+  const mesN=MESES[hoy.getMonth()];
+  const tiene=(state.movimientos||[]).some(m=>m.categoria==="Cuota escuela"&&m.mesRef===mesN&&m.anio===hoy.getFullYear());
+  if(!tiene && hoy.getDate()>=a.diaCuota) out.push({id:"p"+mesN+hoy.getFullYear(),rojo:false,desde:hoyISO(),texto:`No te olvides de pedir la cuota de ${mesN}`});
+  return out;
+}
+function addDiasISO(iso,n){ const [y,m,d]=iso.split("-").map(Number); const x=new Date(Date.UTC(y,m-1,d+n)); return x.getUTCFullYear()+"-"+pad2(x.getUTCMonth()+1)+"-"+pad2(x.getUTCDate()); }
+function avisosHTML(){ const l=calcularAvisos(); if(!l.length) return ""; return l.map(x=>`<div class="av-item ${x.rojo?"av-rojo":""}">${x.rojo?"🔴":"🔔"} ${x.texto}</div>`).join(""); }
+async function guardarAvisosParaSW(){
+  try{ if(!("caches" in window)) return; const c=await caches.open("equilibra-avisos"); await c.put("/avisos.json",new Response(JSON.stringify({hora:avCfg().hora,items:calcularAvisos().map(x=>({id:x.id,desde:x.desde,texto:x.texto}))}))); }catch(e){}
+}
+async function mostrarNotif(titulo,texto,tag){
+  try{ const reg=await navigator.serviceWorker.ready; await reg.showNotification(titulo,{body:texto,tag:tag||"eq",icon:"icon-192.png",badge:"icon-192.png",vibrate:[300,150,300,150,600],requireInteraction:true,renotify:true}); }catch(e){}
+  try{ if(navigator.vibrate) navigator.vibrate([300,150,300,150,600]); }catch(e){}
+}
+function revisarAvisos(){
+  const a=avCfg(); if(!a.on || !("Notification" in window) || Notification.permission!=="granted") return;
+  if(new Date().getHours()<a.hora) return;
+  a.vistos=a.vistos||{}; const hoy=hoyISO(); let cambio=false;
+  calcularAvisos().forEach(x=>{ if(a.vistos[x.id]!==hoy && difDias(x.desde)<=0){ a.vistos[x.id]=hoy; cambio=true; mostrarNotif("Equilibra",x.texto,x.id); } });
+  if(cambio) saveState();
+}
+window.openAvisos=function(){
+  const a=avCfg(), perm=("Notification" in window)?Notification.permission:"no";
+  document.getElementById("modalBody").innerHTML=`<h2>🔔 Avisos y recordatorios</h2>
+   <p class="mm-p" style="margin:0 0 10px">Equilibra te avisa de los pagos que vencen, de la cuota que tenés que pedir y de la cuota enviada que no te pagaron. La notificación suena y vibra.</p>
+   ${perm==="denied"?`<div class="aviso-banner">Las notificaciones están bloqueadas en este celular. Activalas en Ajustes del celular → Apps → Equilibra (o Chrome) → Notificaciones.</div>`:""}
+   <label class="cu-lbl" style="display:flex;gap:10px;align-items:center;margin:8px 0"><input type="checkbox" id="av_on" ${a.on&&perm==="granted"?"checked":""} style="width:22px;height:22px"> <b>Activar avisos</b></label>
+   <div class="form-grid">
+    <div class="form-field"><label>Avisar cuántos días antes del vencimiento</label><input type="number" inputmode="numeric" id="av_dias" value="${a.dias}"></div>
+    <div class="form-field"><label>A qué hora (0 a 23)</label><input type="number" inputmode="numeric" id="av_hora" value="${a.hora}"></div>
+    <div class="form-field"><label>Día del mes para recordarte pedir la cuota</label><input type="number" inputmode="numeric" id="av_dc" value="${a.diaCuota}"></div>
+    <div class="form-field"><label>Cuota sin pago: marcar en rojo después de (días)</label><input type="number" inputmode="numeric" id="av_rj" value="${a.rojoDias}"></div></div>
+   <p class="mm-p" style="font-size:13px;margin:8px 0">Importante: el celular solo puede avisar cuando Equilibra está abierta o el sistema la despierta. Si el celular está en silencio total, solo vibra. Para pagos muy importantes, abrí Equilibra cada día.</p>
+   <div class="modal-actions" style="margin-top:12px"><button class="btn btn-primary" id="av_ok">Guardar</button><button class="btn" id="av_test">Probar aviso</button><button class="btn" onclick="closeModal()">Cerrar</button></div>`;
+  const $=id=>document.getElementById(id);
+  const leer=()=>{ a.dias=Math.max(0,Number($("av_dias").value)||0); a.hora=Math.min(23,Math.max(0,Number($("av_hora").value)||0)); a.diaCuota=Math.min(28,Math.max(1,Number($("av_dc").value)||1)); a.rojoDias=Math.max(1,Number($("av_rj").value)||5); };
+  $("av_ok").onclick=async()=>{ leer(); a.on=$("av_on").checked;
+    if(a.on && "Notification" in window && Notification.permission!=="granted"){ const p=await Notification.requestPermission(); if(p!=="granted"){ a.on=false; toast("No diste permiso para las notificaciones."); } }
+    saveState(); guardarAvisosParaSW(); registrarPeriodico(); toast(a.on?"Avisos activados.":"Avisos desactivados."); closeModal(); renderView(currentView); };
+  $("av_test").onclick=async()=>{ if("Notification" in window && Notification.permission!=="granted") await Notification.requestPermission(); mostrarNotif("Equilibra","Así te va a avisar: con sonido y vibración.","test"); };
+  openModal();
+};
+async function registrarPeriodico(){ try{ const reg=await navigator.serviceWorker.ready; if(reg.periodicSync) await reg.periodicSync.register("equilibra-avisos",{minInterval:6*3600*1000}); }catch(e){} }
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ guardarAvisosParaSW(); revisarAvisos(); } });
+setInterval(()=>{ revisarAvisos(); },60000);
+setTimeout(()=>{ guardarAvisosParaSW(); revisarAvisos(); },2500);
+
 function renderInicio(){
   const tot = totalesDelMes(currentMes, currentAnio);
   renderHero(tot);
@@ -1471,6 +1541,7 @@ function renderInicio(){
   if(state.movimientos.length===0 && state.deudas.length===0){
     aviso.innerHTML = `<div class="aviso-banner">¡Bienvenida! Esta app todavía está vacía. Si ya usabas Equilibra, tocá ⋮ y elegí <strong>Restaurar respaldo</strong> para traer tus datos. Si empezás de cero, cargá tu primer movimiento con el botón +.</div>` + aviso.innerHTML;
   }
+  aviso.innerHTML = avisosHTML() + aviso.innerHTML;
   const prev = mesAnterior(currentMes, currentAnio);
   const totPrev = totalesDelMes(prev.mes, prev.anio);
   const ymSel = ymStr(currentMes, currentAnio);
@@ -1890,8 +1961,8 @@ window.openCuotaWA=function(){
     // ingreso automático: la mitad que te tiene que pagar
     const mi=MESES.indexOf(mes)+1, f=`${anioC}-${pad2(mi)}-10`;
     let ing=state.movimientos.find(m=>m.tipo==="Ingreso"&&m.categoria==="Cuota escuela"&&m.mesRef===mes&&m.anio===anioC);
-    if(ing){ if(ing.estado!=="Pagado"){ ing.importe=mit; ing.observaciones="Cuota total "+tot; } }
-    else state.movimientos.push({id:crypto.randomUUID(),fecha:f,mesRef:mes,anio:anioC,tipo:"Ingreso",categoria:"Cuota escuela",subcategoria:"",descripcion:"Cuota escuela ("+pct+"%)",importe:mit,medioPago:"Transferencia",estado:"Pendiente",observaciones:"Cuota total "+tot,recurrente:false});
+    if(ing){ if(ing.estado!=="Pagado"){ ing.importe=mit; ing.observaciones="Cuota total "+tot; ing.enviadaEl=hoyISO(); } }
+    else state.movimientos.push({id:crypto.randomUUID(),fecha:f,mesRef:mes,anio:anioC,tipo:"Ingreso",categoria:"Cuota escuela",subcategoria:"",descripcion:"Cuota escuela ("+pct+"%)",importe:mit,medioPago:"Transferencia",estado:"Pendiente",observaciones:"Cuota total "+tot,recurrente:false,enviadaEl:hoyISO()});
     saveState();
     const msg=`Hola ${cf.nombre},\n\nEspero que te encuentres bien.\n\nTe paso la cuota referente a ${mes.toLowerCase()}.\n\nTotal de la cuota: ${fmtMoney(tot)}\nA pagar (${pct}%): ${fmtMoney(mit)}\n\nGracias!`;
     // con PDF: se comparte el archivo + el mensaje (en WhatsApp elegís el chat de él y tocás enviar)
@@ -1946,7 +2017,7 @@ function renderCuotaEscuela(){
   const ms=state.movimientos.filter(m=>m.tipo==="Ingreso"&&m.categoria==="Cuota escuela"&&m.anio===currentAnio).sort((a,b)=>(b.fecha||"")<(a.fecha||"")?-1:1);
   let html=`<div class="mm-tit">🎓 Cuota de la escuela</div>`;
   if(!ms.length) html+=`<p class="mm-p" style="margin-bottom:12px">Subí el PDF de la cuota: la app lee el total, calcula la mitad que te tiene que pagar y te deja el mensaje listo para WhatsApp.</p>`;
-  else html+=`<div class="al-tot">Historial ${currentAnio} · tocá un mes para marcarlo o corregirlo</div>`+ms.map(m=>`<div class="al-row" onclick="openCuotaFila('${m.id}')"><div><div class="al-m">${m.mesRef}</div><div class="al-d">${m.estado==="Pagado"?"Pagó el "+(m.fecha||"").split("-").reverse().slice(0,2).join("/")+" · ":""}${m.observaciones||""}</div></div><span class="al-chip ${m.estado==="Pagado"?"ok":"wait"}">${m.estado==="Pagado"?"✓ ":"Por cobrar "}${fmtMoney(m.importe)}</span></div>`).join("");
+  else html+=`<div class="al-tot">Historial ${currentAnio} · tocá un mes para marcarlo o corregirlo</div>`+ms.map(m=>`<div class="al-row" onclick="openCuotaFila('${m.id}')"><div><div class="al-m">${m.mesRef}</div><div class="al-d">${m.estado==="Pagado"?"Pagó el "+(m.fecha||"").split("-").reverse().slice(0,2).join("/")+" · ":""}${m.observaciones||""}</div></div><span class="al-chip ${m.estado==="Pagado"?"ok":(m.enviadaEl&&-difDias(m.enviadaEl)>=avCfg().rojoDias?"late":"wait")}">${m.estado==="Pagado"?"✓ ":"Por cobrar "}${fmtMoney(m.importe)}</span></div>`).join("");
   html+=`<button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="openCuotaWA()">📄 Subir cuota y pedir por WhatsApp</button><button class="btn" style="width:100%;margin-top:8px" onclick="openCuotaPagada()">+ Cargar un mes que ya pagó</button>`;
   el.innerHTML=html;
 }
@@ -2800,7 +2871,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-02.54";
+const APP_BUILD = "2026-10-02.55";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
