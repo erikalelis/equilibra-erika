@@ -1914,9 +1914,17 @@ function detectarCuota(texto){
   });
   const mapa=new Map(); cand.forEach(c=>{ const p=mapa.get(c.v)||0; mapa.set(c.v,Math.max(p,c.peso)); });
   const lista=[...mapa.entries()].sort((a,b)=>b[1]-a[1]||b[0]-a[0]).map(x=>x[0]);
-  const cuenta={}; MESES.forEach(m=>{ const n=(t.match(new RegExp("\\b"+m+"\\b","gi"))||[]).length; if(n) cuenta[m]=n; });
-  const mesDet=Object.keys(cuenta).sort((a,b)=>cuenta[b]-cuenta[a])[0]||null;
-  const ma=mesDet&&t.match(new RegExp(mesDet+"\\s+(20\\d\\d)","i"));
+  const lev=(a,b)=>{ const d=Array.from({length:a.length+1},(_,i)=>[i]); for(let j=1;j<=b.length;j++) d[0][j]=j; for(let i=1;i<=a.length;i++) for(let j=1;j<=b.length;j++) d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1)); return d[a.length][b.length]; };
+  const norm=x=>x.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  const cuenta={}; const toks=norm(t).match(/[a-z]{4,12}/g)||[];
+  toks.forEach(w=>{ MESES.forEach(m=>{ const n=norm(m); if(w===n || (n.length>=5 && Math.abs(w.length-n.length)<=1 && lev(w,n)<=(n.length>=7?2:1) && w[0]===n[0])){ cuenta[m]=(cuenta[m]||0)+1; } }); });
+  let mesDet=Object.keys(cuenta).sort((a,b)=>cuenta[b]-cuenta[a])[0]||null, anioDet=null;
+  if(mesDet){ const ma=norm(t).match(new RegExp(norm(mesDet).slice(0,3)+"[a-z]*\\s+(20\\d\\d)")); if(ma) anioDet=parseInt(ma[1]); }
+  if(!mesDet){ // sin nombre de mes: se usa la fecha de la factura (dd/mm/aaaa)
+    const f=(t.match(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](20\d\d)\b/g)||[]).map(x=>x.split(/[\/\-.]/).map(Number)).filter(x=>x[1]>=1&&x[1]<=12);
+    if(f.length){ const c={}; f.forEach(x=>{c[x[1]]=(c[x[1]]||0)+1;}); const m=Object.keys(c).sort((a,b)=>c[b]-c[a])[0]; mesDet=MESES[m-1]; anioDet=f[0][2]; }
+  }
+  const ma=anioDet?[0,anioDet]:null;
   return {total:lista[0]||0, candidatos:lista.slice(0,4), mes:mesDet, anio:ma?parseInt(ma[1]):null};
 }
 function cargarScript(url){
@@ -1981,6 +1989,7 @@ window.openCuotaWA=function(){
       if(r.mes){ mes=r.mes; $("cu_mes").value=mes; } if(r.anio){ anioC=r.anio; }
       if(r.total){ $("cu_tot").value=r.total; $("cu_estado").textContent="Listo, leí la cuota de "+mes+"."; }
       else $("cu_estado").textContent="No encontré el total en el PDF. Escribilo abajo.";
+      if(!r.mes) $("cu_estado").textContent+=" No pude leer el mes: elegilo arriba.";
       calc(); aviso();
     }catch(e){ $("cu_estado").textContent="No pude leer el PDF (¿hay internet?). Escribí el total abajo."; }
   };
@@ -2933,7 +2942,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-02.60";
+const APP_BUILD = "2026-10-02.61";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
