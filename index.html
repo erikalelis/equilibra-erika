@@ -440,9 +440,9 @@ tbody tr:hover{background:var(--petrol-100);}
   font-size:16.5px; box-shadow:0 10px 30px rgba(0,0,0,.25); opacity:0; pointer-events:none;
   transition:all .25s ease; z-index:200;
 }
-.toast{pointer-events:auto; display:flex; align-items:center; gap:10px; white-space:nowrap;}
+.toast{display:flex; align-items:center; gap:10px; white-space:nowrap;}
 #inicioSubPend{padding-bottom:90px;}
-.toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+.toast.show{pointer-events:auto; bottom:92px; opacity:1; transform:translateX(-50%) translateY(0);}
 
 .soon-view{padding:70px 20px; text-align:center; color:var(--text-muted);}
 .soon-view h2{color:var(--text); font-size:23px; margin-bottom:8px;}
