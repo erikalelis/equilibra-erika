@@ -1724,9 +1724,6 @@ function renderRecomendaciones(tot, catGasto, deudaTotal, compromisos){
     // no tenemos detalle histórico de alimentación por mes salvo lo cargado; se omite si no hay dato confiable
     return null;
   }).filter(v=>v!==null);
-  if(state.deudas.length>0 && deudaTotal>0 && tot.ingresos>0 && deudaTotal/tot.ingresos > 3){
-    items.push({prio:"media", txt:"La deuda total pendiente es elevada en relación con el ingreso mensual.", impMes:null, impAnio:null});
-  }
   if(compromisos>0 && tot.ingresos>0 && compromisos/tot.ingresos > 0.4){
     const px = [...activasR].sort((a,b)=>a.c.restantes-b.c.restantes)[0];
     const proxima = px ? {nombre:px.d.nombre, cuotaMensual:px.c.importe, restantes:px.c.restantes} : null;
@@ -2413,7 +2410,6 @@ function renderDeudas(){
   const estaPagada = x=>{ const m = movDeCuota(state, x.d, ym); return !!(m && m.estado==="Pagado"); };
   const totalMes = activas.reduce((a,x)=>a+x.c.importe,0);
   const pagadoMes = activas.filter(estaPagada).reduce((a,x)=>a+x.c.importe,0);
-  const saldo = saldoTotalPrestamos(ym);
   const proxFin = [...activas].sort((a,b)=> a.c.restantes-b.c.restantes || (a.c.fecha<b.c.fecha?-1:1))[0];
 
   const pctMes = totalMes>0 ? Math.round(pagadoMes/totalMes*100) : 0;
@@ -2789,7 +2785,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-02.48";
+const APP_BUILD = "2026-10-02.49";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
