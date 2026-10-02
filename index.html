@@ -2216,6 +2216,7 @@ function openMovModal(mov){
     if(!data.descripcion){ toast("Ingresá una descripción."); return; }
     if(isNew){ state.movimientos.push({id:crypto.randomUUID(), ...data}); }
     else { const impAntes = mov.importe; Object.assign(mov, data); if((mov.origenPrestamo || mov.origenTarjeta) && Number(mov.importe)!==Number(impAntes)) mov.importeManual = true; }
+    if(!isNew && mov.tipo==="Gasto" && mov.recurrente && mov.fecha){ const dia=String(parseInt(mov.fecha.split("-")[2])); (state.recurrentes||[]).filter(r=>r.descripcion===mov.descripcion).forEach(r=>{ r.fechaHabitual=dia; r.vencimiento=dia; }); }
     saveState(); closeModal(); renderMovimientos(); if(currentView==="inicio") renderInicio();
     toast("Movimiento guardado.");
   };
@@ -2893,7 +2894,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-02.56";
+const APP_BUILD = "2026-10-02.57";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
