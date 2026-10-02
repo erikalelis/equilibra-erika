@@ -2049,7 +2049,7 @@ function renderCuotaEscuela(){
   const ms=state.movimientos.filter(m=>m.tipo==="Ingreso"&&m.categoria==="Cuota escuela"&&m.anio===currentAnio).sort((a,b)=>(b.fecha||"")<(a.fecha||"")?-1:1);
   let html=`<div class="mm-tit">🎓 Cuota de la escuela</div>`;
   if(!ms.length) html+=`<p class="mm-p" style="margin-bottom:12px">Subí el PDF de la cuota: la app lee el total, calcula la mitad que te tiene que pagar y te deja el mensaje listo para WhatsApp.</p>`;
-  else html+=`<div class="al-tot">Historial ${currentAnio} · tocá un mes para marcarlo o corregirlo</div>`+ms.map(m=>`<div class="al-row" onclick="openCuotaFila('${m.id}')"><div><div class="al-m">${m.mesRef}</div><div class="al-d">${m.estado==="Pagado"?"Pagó el "+(m.fecha||"").split("-").reverse().slice(0,2).join("/")+" · ":""}${m.observaciones||""}</div></div><span class="al-chip ${m.estado==="Pagado"?"ok":(m.enviadaEl&&-difDias(m.enviadaEl)>=avCfg().rojoDias?"late":"wait")}">${m.estado==="Pagado"?"✓ ":"Por cobrar "}${fmtMoney(m.importe)}</span></div>`).join("");
+  else html+=``+ms.map(m=>`<div class="al-row" onclick="openCuotaFila('${m.id}')"><div><div class="al-m">${m.mesRef}</div><div class="al-d">${m.estado==="Pagado"?"Pagó el "+(m.fecha||"").split("-").reverse().slice(0,2).join("/")+" · ":""}${m.observaciones||""}</div></div><span class="al-chip ${m.estado==="Pagado"?"ok":(m.enviadaEl&&-difDias(m.enviadaEl)>=avCfg().rojoDias?"late":"wait")}">${m.estado==="Pagado"?"✓ ":"Por cobrar "}${fmtMoney(m.importe)}</span></div>`).join("");
   html+=`<button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="openCuotaWA()">📄 Subir cuota y pedir por WhatsApp</button><button class="btn" style="width:100%;margin-top:8px" onclick="openCuotaPagada()">+ Cargar un mes que ya pagó</button>`;
   el.innerHTML=html;
 }
@@ -2933,7 +2933,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-02.59";
+const APP_BUILD = "2026-10-02.60";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
