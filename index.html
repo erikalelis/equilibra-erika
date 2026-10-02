@@ -598,7 +598,7 @@ tbody tr:hover{background:var(--petrol-100);}
 .toast .undo{margin-left:12px; background:rgba(255,255,255,.18); color:#fff; border:0; border-radius:999px; padding:6px 14px; font-weight:700; cursor:pointer;}
 
 .bluvia-firma{text-align:center; font-size:15px; letter-spacing:.06em; color:var(--text-muted); opacity:.85; margin:34px 0 96px;}
-.mv-venc{background:#EAF3F4;border:1px solid #BFD9DC;color:#145366;border-radius:99px;padding:5px 12px;font-size:13px;font-weight:600;margin-top:6px;cursor:pointer}
+.mv-venc{background:none;border:none;padding:0;margin:0;font-size:inherit;font-family:inherit;color:var(--text-muted);cursor:pointer}
 /* Toast */
 .toast{
   position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
@@ -841,7 +841,7 @@ tbody tr:hover{background:var(--petrol-100);}
         </div>
       </section>
 
-    <p class="bluvia-firma">hecho por Bluvia</p>
+    <p class="bluvia-firma">Hecho por Bluvia</p>
     </main>
   </div>
 
@@ -1071,6 +1071,17 @@ function ajustesLimpieza2(st){
     const borr=(st.movimientos||[]).filter(m=>m.tipo==="Gasto"&&m.estado==="Pendiente"&&m.mesRef==="Septiembre"&&m.anio===2026);
     if(borr.length){ st.config.borradosSep=borr; st.movimientos=st.movimientos.filter(m=>!borr.includes(m)); }
   }
+  // cuota de escuela duplicada (mismo mes): queda una sola, prefiere la ya pagada
+  { const vc=new Map(), qc=new Set();
+    [...(st.movimientos||[])].sort((a,b)=>(a.estado==="Pagado"?0:1)-(b.estado==="Pagado"?0:1)).forEach(m=>{
+      if(m.tipo!=="Ingreso"||m.categoria!=="Cuota escuela") return;
+      const k=m.mesRef+"|"+m.anio; if(vc.has(k)) qc.add(m); else vc.set(k,m); });
+    if(qc.size) st.movimientos=st.movimientos.filter(m=>!qc.has(m)); }
+  // historial de Alimentos: si falta algún mes de la planilla, se vuelve a cargar (no pisa lo que ya tengas)
+  if(!st._alimSeed4){ st._alimSeed4=true; const ya=new Set((st.movimientos||[]).filter(m=>m.tipo==="Ingreso"&&m.categoria==="Alimentos"&&m.estado==="Pagado"&&m.anio===2026).map(m=>m.mesRef));
+    [["2026-01-05",510934.65,"Pensión y aguinaldo"],["2026-02-06",325436.20,""],["2026-03-09",411010.23,""],["2026-04-06",326586.20,""],["2026-05-05",360713.37,""],["2026-06-04",337255.90,""],["2026-07-06",522000,"Pensión y aguinaldo"],["2026-08-06",354551.44,""]].forEach(([f,imp,obs])=>{
+      const mes=MESES[parseInt(f.split("-")[1])-1]; if(ya.has(mes)) return;
+      st.movimientos.push({id:crypto.randomUUID(),fecha:f,mesRef:mes,anio:2026,tipo:"Ingreso",categoria:"Alimentos",subcategoria:"",descripcion:"Alimentos (pensión)",importe:imp,medioPago:"Transferencia",estado:"Pagado",observaciones:obs,recurrente:false}); }); }
   // tarjetas repetidas (mismo mes, mismo importe): queda una sola
   const vistos=new Map(), quitar=new Set();
   [...(st.movimientos||[])].sort((a,b)=>(a.estado==="Pagado"?0:1)-(b.estado==="Pagado"?0:1)||((a.origenTarjeta?0:1)-(b.origenTarjeta?0:1))).forEach(m=>{
@@ -1237,10 +1248,10 @@ function movCard(m){
   const txtBtn = ing ? (hecho?"✓ Cobrado":"Por cobrar") : (hecho?"✓ Pagado":"Por pagar");
   const conDia = m.origenPrestamo || m.origenTarjeta || m.recurrente; // solo si el día es real, no el 01 por defecto
   const cat = (m.categoria===m.descripcion) ? "" : m.categoria;
-  const meta = !conDia ? cat : (cat?cat+" · ":"")+(ing ? `día ${dia}` : `vence día ${dia}`); void 0;
+  const meta = (!conDia || !ing) ? cat : (cat?cat+" · ":"")+`día ${dia}`; void 0;
   const _old = !conDia ? `${m.categoria}` : (ing ? `${m.categoria} · día ${dia}` : `${m.categoria} · vence día ${dia}`);
   const mm=m.fecha?m.fecha.split("-"):[], fechaTxt=m.fecha?`${parseInt(mm[2])}/${parseInt(mm[1])}`:"—";
-  const venc = (!ing && !hecho) ? `<button class="mv-venc" onclick="openVencimiento('${m.id}')">📅 Vence ${fechaTxt} · cambiar</button>` : "";
+  const venc = (!ing && !hecho) ? `<button class="mv-venc" onclick="openVencimiento('${m.id}')">Vencimiento ${fechaTxt}</button>` : "";
   return `<div class="mv-item${hecho?" hecho":""}">
     <div class="mv-top"><div class="mv-n" onclick="openMovActions('${m.id}')">${m.descripcion}</div>
       <button class="mv-a ${ing?"ing":"gas"}" onclick="editImporte('${m.id}')" aria-label="Cambiar importe">${fmtMoneyHTML(m.importe)}</button></div>
@@ -1488,28 +1499,25 @@ function hoyISO(){ const d=new Date(); return d.getFullYear()+"-"+pad2(d.getMont
 function difDias(iso){ const [y,m,d]=iso.split("-").map(Number), h=hoyISO().split("-").map(Number); return Math.round((Date.UTC(y,m-1,d)-Date.UTC(h[0],h[1]-1,h[2]))/86400000); }
 function calcularAvisos(){
   const a=avCfg(), out=[], hoy=new Date();
-  const ymHoy=hoyISO().slice(0,7); let sinDia=0;
+  const ymHoy=hoyISO().slice(0,7);
   (state.movimientos||[]).forEach(m=>{
     if(m.tipo==="Gasto" && m.estado==="Pendiente" && m.fecha && m.fecha.slice(0,7)>=ymHoy){
-      const real = m.fechaOk || m.origenPrestamo || m.origenTarjeta;
-      if(!real){ sinDia++; return; }
+      if(!(m.fechaOk || m.origenPrestamo || m.origenTarjeta)) return;
       const d=difDias(m.fecha);
-      if(d<0 && d>=-30) out.push({id:"v"+m.id,rojo:true,desde:m.fecha,texto:`Vencido hace ${-d} día${d===-1?"":"s"}: ${m.descripcion||m.categoria} · ${fmtMoney(m.importe)}`});
-      else if(d>=0 && d<=a.dias) out.push({id:"v"+m.id,rojo:d===0,desde:addDiasISO(m.fecha,-a.dias),texto:(d===0?"Vence HOY":d===1?"Vence mañana":`Vence en ${d} días`)+`: ${m.descripcion||m.categoria} · ${fmtMoney(m.importe)}`});
+      if(d>=0 && d<=a.dias) out.push({id:"v"+m.id,rojo:d===0,banner:true,desde:addDiasISO(m.fecha,-a.dias),texto:(d===0?"Vence HOY":d===1?"Vence mañana":`Vence en ${d} días`)+`: ${m.descripcion||m.categoria} · ${fmtMoney(m.importe)}`});
     }
     if(m.tipo==="Ingreso" && m.categoria==="Cuota escuela" && m.estado==="Pendiente" && m.enviadaEl){
       const n=-difDias(m.enviadaEl);
       if(n>=a.rojoDias) out.push({id:"c"+m.id,rojo:true,desde:m.enviadaEl,texto:`Todavía no te pagaron la cuota de ${m.mesRef} (enviada hace ${n} días)`});
     }
   });
-  if(sinDia>0) out.push({id:"sd"+ymHoy,rojo:false,desde:hoyISO(),texto:`Para recibir avisos, elegí el día de vencimiento de tus gastos (tocá 📅 en Pagos). Faltan ${sinDia}.`,silencioso:true});
   const mesN=MESES[hoy.getMonth()];
   const tiene=(state.movimientos||[]).some(m=>m.categoria==="Cuota escuela"&&m.mesRef===mesN&&m.anio===hoy.getFullYear());
   if(!tiene && hoy.getDate()>=a.diaCuota) out.push({id:"p"+mesN+hoy.getFullYear(),rojo:false,desde:hoyISO(),texto:`No te olvides de pedir la cuota de ${mesN}`});
   return out;
 }
 function addDiasISO(iso,n){ const [y,m,d]=iso.split("-").map(Number); const x=new Date(Date.UTC(y,m-1,d+n)); return x.getUTCFullYear()+"-"+pad2(x.getUTCMonth()+1)+"-"+pad2(x.getUTCDate()); }
-function avisosHTML(){ const l=calcularAvisos(); if(!l.length) return ""; return l.map(x=>`<div class="av-item ${x.rojo?"av-rojo":""}">${x.rojo?"🔴":"🔔"} ${x.texto}</div>`).join(""); }
+function avisosHTML(){ const l=calcularAvisos().filter(x=>x.banner); if(!l.length) return ""; return l.map(x=>`<div class="av-item ${x.rojo?"av-rojo":""}">${x.rojo?"🔴":"🔔"} ${x.texto}</div>`).join(""); }
 async function guardarAvisosParaSW(){
   try{ if(!("caches" in window)) return; const c=await caches.open("equilibra-avisos"); await c.put("/avisos.json",new Response(JSON.stringify({hora:avCfg().hora,items:calcularAvisos().filter(x=>!x.silencioso).map(x=>({id:x.id,desde:x.desde,texto:x.texto}))}))); }catch(e){}
 }
@@ -2925,7 +2933,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-02.58";
+const APP_BUILD = "2026-10-02.59";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
