@@ -219,18 +219,29 @@ main.content{padding:18px 16px calc(96px + env(safe-area-inset-bottom,0px)) 16px
 .hero-value.pop{animation:popV .45s ease-out}
 @keyframes popV{50%{transform:scale(1.06)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.chips-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 14px}
+.chip{background:#fff;border-radius:16px;padding:10px 8px;text-align:center;box-shadow:0 4px 14px rgba(10,40,50,.07);animation:vIn .5s ease-out both}
+.chip small{display:block;font-size:11px;color:var(--text-muted,#6b7a80);margin-bottom:2px}
+.chip b{font-size:14px;font-family:var(--font-display)}
+.c-red b{color:#B4413A}.c-green b{color:#2E8F6B}.c-gold b{color:#B8841A}
+.mini-ayuda{font-size:12px;color:var(--text-muted);margin:10px 2px 0}
+.mv-det{margin-top:14px}
+.mv-det summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--text-muted);padding:10px 4px;list-style:none}
+.mv-det summary::before{content:"▸ "}.mv-det[open] summary::before{content:"▾ "}
+.inicio-subtab{flex:1;padding-left:6px;padding-right:6px}
 .hero-frase{position:relative;z-index:1;font-size:14px;margin-top:6px;opacity:.92;font-weight:500}
 .dona-card{background:var(--card,#fff);border-radius:20px;padding:16px;margin:14px 0;box-shadow:0 6px 20px rgba(10,40,50,.08);display:flex;flex-direction:column;gap:14px;align-items:center}
 .dona-card:empty{display:none}
-.dona-wrap{position:relative;width:230px;height:230px;flex:none}
-.dona-wrap svg{width:230px;height:230px;transform:rotate(-90deg)}
+.dona-wrap{position:relative;width:250px;height:250px;flex:none}
+.dona-wrap svg{width:250px;height:250px;transform:rotate(-90deg)}
 .dona-wrap circle.seg{fill:none;stroke-width:7;stroke-linecap:butt;animation:donaIn .9s ease-out both}
 @keyframes donaIn{from{stroke-dasharray:0 100}}
 .dona-centro{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
 .dona-centro small{font-size:13px;color:var(--text-muted,#6b7a80)}
-.dona-centro b{font-size:24px;font-family:var(--font-display);line-height:1.1}
-.dona-leg{width:100%;min-width:0;display:flex;flex-direction:column;gap:9px}
-.dona-leg div{display:flex;align-items:center;gap:10px;font-size:15px}
+.dona-centro b{font-size:25px;font-family:var(--font-display);line-height:1.1}
+.dona-leg{width:100%;min-width:0;display:grid;grid-template-columns:1fr 1fr;gap:8px 16px}
+.dona-leg div{display:flex;align-items:center;gap:7px;font-size:13px}
 .dona-leg i{width:12px;height:12px;border-radius:50%;flex:none}
 .dona-leg span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dona-leg em{font-style:normal;font-weight:700}
@@ -567,21 +578,25 @@ tbody tr:hover{background:var(--petrol-100);}
 
         <div class="dona-card" id="donaCard"></div>
 
+        <div class="chips-row" id="chipsRow"></div>
+
         <div class="inicio-subtabs">
-          <button class="inicio-subtab active" id="subtabPend" onclick="switchInicioSub('pend')">Qué tengo que pagar</button>
-          <button class="inicio-subtab" id="subtabResumen" onclick="switchInicioSub('resumen')">Resumen y consejos</button>
+          <button class="inicio-subtab active" id="subtabPend" onclick="switchInicioSub('pend')">Pagos</button>
+          <button class="inicio-subtab" id="subtabIng" onclick="switchInicioSub('ing')">Ingresos</button>
+          <button class="inicio-subtab" id="subtabResumen" onclick="switchInicioSub('resumen')">Consejos</button>
         </div>
 
         <div id="inicioSubPend">
-          <h3 class="section-title" style="margin-top:0">Qué tengo que pagar <span id="pendCount" style="font-size:12px;color:var(--text-muted);font-weight:400"></span></h3>
           <div class="pend-list" id="pendList"></div>
-          <div class="empty-state" id="pendEmpty" style="display:none">Ya marcaste todo como pagado este mes.</div>
-          <p style="font-size:12px;color:var(--text-muted);margin:6px 2px 0 2px">Tocá el botón cuando pagues algo. Si te equivocás, tocalo de nuevo o usá Deshacer. Si el importe cambió (por ejemplo una cuota UVA), tocá el número para cambiarlo.</p>
+          <span id="pendCount" style="display:none"></span>
+          <div class="empty-state" id="pendEmpty" style="display:none">🎉 Ya marcaste todo como pagado este mes.</div>
+          <p class="mini-ayuda">Tocá el botón cuando pagues. Para cambiar un importe, tocá el número.</p>
+        </div>
 
-          <h3 class="section-title" style="margin-top:22px">Ingresos del mes <span id="ingCount" style="font-size:12px;color:var(--text-muted);font-weight:400"></span></h3>
+        <div id="inicioSubIng" style="display:none;padding-bottom:90px">
+          <span id="ingCount" style="display:none"></span>
           <div class="pend-list" id="ingList"></div>
-          <p style="font-size:12px;color:var(--text-muted);margin:6px 2px 0 2px">Tocá el botón cuando la plata ya te llegó. Si te equivocás, tocalo de nuevo. Para cambiar un importe, tocá el número.</p>
-
+          <p class="mini-ayuda">Tocá el botón cuando la plata ya te llegó.</p>
         </div>
 
         <div id="inicioSubResumen" style="display:none">
@@ -1259,11 +1274,12 @@ function initPeriodSelectors(){
 /* ===================== INICIO ===================== */
 function switchInicioSub(which){
   document.getElementById("inicioSubPend").style.display = which==="pend" ? "block" : "none";
+  document.getElementById("inicioSubIng").style.display = which==="ing" ? "block" : "none";
+  document.getElementById("subtabIng").classList.toggle("active", which==="ing");
   document.getElementById("inicioSubResumen").style.display = which==="resumen" ? "block" : "none";
   document.getElementById("subtabPend").classList.toggle("active", which==="pend");
   document.getElementById("subtabResumen").classList.toggle("active", which==="resumen");
-  window.scrollTo({top:0, behavior:"instant"});
-}
+  }
 let heroOculto = false;
 function renderHero(tot){
   document.getElementById("heroLabel").textContent = `Balance de ${currentMes}`;
@@ -1295,10 +1311,18 @@ function renderDona(tot){
   const leg=arr.map(([k,v],i)=>`<div><i style="background:${col[i]}"></i><span>${k}</span><em>${Math.round(v/total*100)}%</em></div>`).join("");
   el.innerHTML=`<div class="dona-tit">¿A dónde se va tu plata?</div><div class="dona-wrap"><svg viewBox="0 0 42 42"><circle cx="21" cy="21" r="14" fill="none" stroke="#eef2f3" stroke-width="7"/>${segs}</svg><div class="dona-centro"><small>Gastos</small><b>${fmtMoney(total)}</b></div></div><div class="dona-leg">${leg}</div>`;
 }
+function renderChips(){
+  const cr=document.getElementById("chipsRow"); if(!cr) return;
+  const ms=movsDelMes(currentMes,currentAnio);
+  const sum=f=>ms.filter(f).reduce((a,m)=>a+Number(m.importe||0),0);
+  const pagado=sum(m=>m.tipo==="Gasto"&&m.estado==="Pagado"), porPagar=sum(m=>m.tipo==="Gasto"&&m.estado!=="Pagado"), porCobrar=sum(m=>m.tipo==="Ingreso"&&m.estado!=="Pagado");
+  const o=heroOculto?"••••":null;
+  cr.innerHTML=`<div class="chip c-red"><small>Por pagar</small><b>${o||fmtMoney(porPagar)}</b></div><div class="chip c-green"><small>Ya pagado</small><b>${o||fmtMoney(pagado)}</b></div><div class="chip c-gold"><small>Por cobrar</small><b>${o||fmtMoney(porCobrar)}</b></div>`;
+}
 function renderInicio(){
   const tot = totalesDelMes(currentMes, currentAnio);
   renderHero(tot);
-  renderDona(tot);
+  renderDona(tot); renderChips();
   const aviso = document.getElementById("inicioAviso");
   if(tot.sinDatos){
     aviso.innerHTML = `<div class="aviso-banner">No hay datos cargados para ${currentMes} ${currentAnio} — ni movimientos detallados ni un resumen histórico. Los indicadores de este panel van a mostrar $0 hasta que cargues algo.</div>`;
@@ -1379,7 +1403,7 @@ function renderPendientes(){
   const pct = suma(gs)>0 ? Math.round(suma(pag)/suma(gs)*100) : 0;
   let html = gs.length ? `<div class="mv-sub"><div class="t">Ya pagaste <b>${fmtMoney(suma(pag))}</b> de ${fmtMoney(suma(gs))}</div><div class="mv-bar"><i style="width:${pct}%"></i></div></div>` : "";
   html += `<div class="mv-list">${pend.map(movCard).join("")}</div>`;
-  if(pag.length) html += `<div class="mv-sep">Ya pagados (${pag.length})</div><div class="mv-list">${pag.map(movCard).join("")}</div>`;
+  if(pag.length) html += `<details class="mv-det"${window._pagOpen?" open":""} ontoggle="window._pagOpen=this.open"><summary>Ya pagados (${pag.length})</summary><div class="mv-list">${pag.map(movCard).join("")}</div></details>`;
   list.innerHTML = html;
 }
 function renderDesglose(tot){
@@ -2425,7 +2449,7 @@ document.getElementById("fabNuevoMov").onclick = ()=> document.getElementById("b
 document.getElementById("heroEyeBtn").onclick = ()=>{
   heroOculto = !heroOculto;
   document.getElementById("heroEyeBtn").textContent = heroOculto ? "🙈" : "👁";
-  if(currentView==="inicio"){ const _t=totalesDelMes(currentMes, currentAnio); renderHero(_t); renderDona(_t); }
+  if(currentView==="inicio"){ const _t=totalesDelMes(currentMes, currentAnio); renderHero(_t); renderDona(_t); renderChips(); }
 };
 document.getElementById("btnMoreMenu").onclick = ()=>{
   document.getElementById("modalBody").innerHTML = `
@@ -2451,7 +2475,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-01.29";
+const APP_BUILD = "2026-10-01.30";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
