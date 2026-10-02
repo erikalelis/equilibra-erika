@@ -1,4 +1,4 @@
-const CACHE_NAME = "equilibra-v37";
+const CACHE_NAME = "equilibra-v38";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
@@ -48,7 +48,7 @@ self.addEventListener("periodicsync", (event) => {
     for (const it of data.items) {
       if (it.desde <= hoy && vistos[it.id] !== hoy) {
         vistos[it.id] = hoy;
-        await self.registration.showNotification("Equilibra", { body: it.texto, tag: it.id, icon: "icon-192.png", vibrate: [300,150,300,150,600], requireInteraction: true });
+        await self.registration.showNotification("Equilibra", { body: it.texto, tag: it.id, icon: "icon-192.png", badge: "badge-96.png", vibrate: [300,150,300,150,600], requireInteraction: true });
       }
     }
     await c.put("/vistos.json", new Response(JSON.stringify(vistos)));

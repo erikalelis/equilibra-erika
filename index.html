@@ -1490,7 +1490,7 @@ async function guardarAvisosParaSW(){
   try{ if(!("caches" in window)) return; const c=await caches.open("equilibra-avisos"); await c.put("/avisos.json",new Response(JSON.stringify({hora:avCfg().hora,items:calcularAvisos().map(x=>({id:x.id,desde:x.desde,texto:x.texto}))}))); }catch(e){}
 }
 async function mostrarNotif(titulo,texto,tag){
-  try{ const reg=await navigator.serviceWorker.ready; await reg.showNotification(titulo,{body:texto,tag:tag||"eq",icon:"icon-192.png",badge:"icon-192.png",vibrate:[300,150,300,150,600],requireInteraction:true,renotify:true}); }catch(e){}
+  try{ const reg=await navigator.serviceWorker.ready; await reg.showNotification(titulo,{body:texto,tag:tag||"eq",icon:"icon-192.png",badge:"badge-96.png",vibrate:[300,150,300,150,600],requireInteraction:true,renotify:true}); }catch(e){}
   try{ if(navigator.vibrate) navigator.vibrate([300,150,300,150,600]); }catch(e){}
 }
 function revisarAvisos(){
@@ -1600,10 +1600,10 @@ function renderInicio(){
   renderCubrirMes(tot);
 }
 const CAT_ICO={"Vivienda":"🏠","Alimentación":"🛒","Supermercado":"🛒","Alimentos":"🧸","Cuota escuela":"🎓","Servicios":"💡","Préstamos":"🏦","Tarjetas":"💳","Salud y bienestar":"💪","Salud":"💪","Educación":"🎓","Transporte":"🚗","Ahorro":"🐷","Sueldo":"💼","Otros ingresos":"✨","Ocio":"🎉","Otros":"🧾"};
-function agrupaCat(arr){
+function agrupaCat(arr,sinTotal){
   const g={}; arr.forEach(m=>{(g[m.categoria||"Otros"]=g[m.categoria||"Otros"]||[]).push(m)});
   return Object.entries(g).sort((a,b)=>b[1].reduce((x,m)=>x+Number(m.importe||0),0)-a[1].reduce((x,m)=>x+Number(m.importe||0),0))
-   .map(([k,l])=>`<div class="mv-cat"><span>${CAT_ICO[k]||"🧾"} ${k}</span><b>${fmtMoney(l.reduce((x,m)=>x+Number(m.importe||0),0))}</b></div><div class="mv-list">${l.map(movCard).join("")}</div>`).join("");
+   .map(([k,l])=>`<div class="mv-cat"><span>${CAT_ICO[k]||"🧾"} ${k}</span>${sinTotal?"":`<b>${fmtMoney(l.reduce((x,m)=>x+Number(m.importe||0),0))}</b>`}</div><div class="mv-list">${l.map(movCard).join("")}</div>`).join("");
 }
 function renderPendientes(){
   const gs = movsDelMes(currentMes, currentAnio).filter(m=>m.tipo==="Gasto")
@@ -1643,7 +1643,7 @@ function renderIngresos(){
   const total = ing.reduce((a,m)=>a+Number(m.importe||0),0);
   document.getElementById("ingCount").textContent = "";
   document.getElementById("ingList").innerHTML = ing.length
-    ? `<div class="mv-sub"><div class="t">Ya cobraste <b>${fmtMoney(recibido)}</b> de ${fmtMoney(total)}</div><div class="mv-bar"><i style="width:${total>0?Math.round(recibido/total*100):0}%"></i></div></div>${agrupaCat(ing)}`
+    ? `<div class="mv-sub"><div class="t">Ya cobraste <b>${fmtMoney(recibido)}</b> de ${fmtMoney(total)}</div><div class="mv-bar"><i style="width:${total>0?Math.round(recibido/total*100):0}%"></i></div></div>${agrupaCat(ing,true)}`
     : `<div class="empty-state">No hay ingresos cargados en ${currentMes}.</div>`;
 }
 function renderCubrirMes(tot){
@@ -2092,6 +2092,7 @@ window.openMovActions = function(id){
   document.getElementById("modalBody").innerHTML = `
     <h2>${m.descripcion}</h2>
     <div class="modal-actions" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:0;">
+      ${m.tipo==="Gasto"?`<button class="btn btn-primary" id="maVenc">📅 Cambiar fecha de vencimiento</button>`:""}
       <button class="btn" id="maEditar">✎ Editar</button>
       <button class="btn" id="maDuplicar">⧉ Duplicar</button>
       <button class="btn" id="maPagado">✓ Marcar como ${m.estado==='Pagado'?'pendiente':'pagado'}</button>
@@ -2099,12 +2100,33 @@ window.openMovActions = function(id){
       <button class="btn" id="maEliminar" style="color:var(--rojo)">✕ Eliminar</button>
     </div>
     <div class="modal-actions" style="margin-top:16px;"><button class="btn btn-primary" onclick="closeModal()">Cerrar</button></div>`;
+  const mv=document.getElementById("maVenc"); if(mv) mv.onclick=()=>{ closeModal(); openVencimiento(id); };
   document.getElementById("maEditar").onclick = ()=>{ closeModal(); editMov(id); };
   document.getElementById("maDuplicar").onclick = ()=>{ closeModal(); duplicateMov(id); };
   document.getElementById("maPagado").onclick = ()=>{ closeModal(); togglePagado(id); };
   const nr=document.getElementById("maNoRep");
   if(nr) nr.onclick=()=>{ closeModal(); m.recurrente=false; (state.recurrentes||[]).filter(r=>r.descripcion===m.descripcion).forEach(r=>r.activo=false); saveState(); renderView(currentView); toast("Listo: «"+m.descripcion+"» ya no se repite los próximos meses."); };
   document.getElementById("maEliminar").onclick = ()=>{ closeModal(); deleteMov(id); };
+  openModal();
+};
+window.openVencimiento=function(id){
+  const m=state.movimientos.find(x=>x.id===id); if(!m) return;
+  document.getElementById("modalBody").innerHTML=`<h2>📅 Vencimiento</h2><p class="mm-p" style="margin:0 0 10px"><b>${m.descripcion}</b> · ${fmtMoney(m.importe)}</p>
+   <div class="form-field"><label>Fecha de vencimiento</label><input type="date" id="vc_f" value="${m.fecha}"></div>
+   ${m.tipo==="Gasto"?`<label class="cu-lbl" style="display:flex;gap:10px;align-items:center;margin:12px 0"><input type="checkbox" id="vc_sig" checked style="width:22px;height:22px"> Usar este día también en los próximos meses</label>`:""}
+   <div class="modal-actions" style="margin-top:12px"><button class="btn btn-primary" id="vc_ok">Guardar</button><button class="btn" onclick="closeModal()">Cancelar</button></div>`;
+  document.getElementById("vc_ok").onclick=()=>{
+    const f=document.getElementById("vc_f").value; if(!f){ toast("Elegí la fecha."); return; }
+    const dia=parseInt(f.split("-")[2]); m.fecha=f;
+    const sig=document.getElementById("vc_sig"); 
+    if(sig&&sig.checked){
+      (state.recurrentes||[]).filter(r=>r.descripcion===m.descripcion).forEach(r=>{ r.fechaHabitual=String(dia); r.vencimiento=String(dia); });
+      if(m.origenTarjeta){ const t=state.tarjetas.find(x=>x.id===m.origenTarjeta); if(t) t.vencimiento=String(dia); }
+      const base=m.anio*12+MESES.indexOf(m.mesRef);
+      state.movimientos.forEach(x=>{ if(x!==m && x.tipo==="Gasto" && x.estado==="Pendiente" && x.descripcion===m.descripcion && x.anio*12+MESES.indexOf(x.mesRef)>base){ const ym=x.fecha.slice(0,7); x.fecha=ym+"-"+pad2(Math.min(dia,diasDelMes(ym))); } });
+    }
+    saveState(); closeModal(); renderView(currentView); guardarAvisosParaSW(); toast("Vencimiento actualizado.");
+  };
   openModal();
 };
 window.editMov = function(id){ openMovModal(state.movimientos.find(m=>m.id===id)); };
@@ -2871,7 +2893,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-02.55";
+const APP_BUILD = "2026-10-02.56";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
