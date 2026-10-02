@@ -1856,6 +1856,7 @@ window.openCuotaWA=function(){
     // ingreso automático: la mitad que te tiene que pagar
     const mi=MESES.indexOf(mes)+1, f=`${anioC}-${pad2(mi)}-10`;
     let ing=state.movimientos.find(m=>m.tipo==="Ingreso"&&m.categoria==="Cuota escuela"&&m.mesRef===mes&&m.anio===anioC);
+    if(ing&&ing.estado==="Pagado"&&!confirm("La cuota de "+mes+" ya figura como pagada. ¿Mandar el mensaje igual?")) return;
     if(ing){ if(ing.estado!=="Pagado") ing.importe=mit; ing.observaciones="Cuota total "+tot; }
     else state.movimientos.push({id:crypto.randomUUID(),fecha:f,mesRef:mes,anio:anioC,tipo:"Ingreso",categoria:"Cuota escuela",subcategoria:"",descripcion:"Cuota escuela ("+pct+"%)",importe:mit,medioPago:"Transferencia",estado:"Pendiente",observaciones:"Cuota total "+tot,recurrente:false});
     saveState();
@@ -1865,13 +1866,34 @@ window.openCuotaWA=function(){
   };
   openModal();
 };
+window.openCuotaPagada=function(){
+  const cf=(state.config.cuota=state.config.cuota||{}), hoy=new Date();
+  document.getElementById("modalBody").innerHTML=`<h2>Cuota que ya pagó</h2>
+   <div class="form-grid"><div class="form-field"><label>Mes de la cuota</label><select id="cp_mes">${MESES.map((m,i)=>`<option ${i===hoy.getMonth()-1||(hoy.getMonth()===0&&i===11)?"selected":""}>${m}</option>`).join("")}</select></div>
+   <div class="form-field"><label>Total de la cuota</label><input type="number" inputmode="numeric" id="cp_tot" placeholder="0"></div>
+   <div class="form-field"><label>Su parte (%)</label><input type="number" inputmode="numeric" id="cp_pct" value="${cf.pct??50}"></div>
+   <div class="form-field"><label>Día que pagó</label><input type="date" id="cp_fecha" value="${hoy.toISOString().slice(0,10)}"></div></div>
+   <div class="ac-total" id="cp_res"></div>
+   <div class="modal-actions" style="margin-top:12px"><button class="btn btn-primary" id="cp_ok">Guardar</button><button class="btn" onclick="closeModal()">Cancelar</button></div>`;
+  const $=id=>document.getElementById(id), calc=()=>{ const t=Number($("cp_tot").value)||0,p=Number($("cp_pct").value)||50; $("cp_res").innerHTML=t?`Pagó: <b>${fmtMoney(Math.round(t*p/100))}</b>`:""; return Math.round(t*p/100); };
+  ["cp_tot","cp_pct"].forEach(i=>$(i).oninput=calc);
+  $("cp_ok").onclick=()=>{
+    const mit=calc(), tot=Number($("cp_tot").value)||0, mes=$("cp_mes").value, f=$("cp_fecha").value; if(!mit||!f){ toast("Poné el total y el día."); return; }
+    const anio=parseInt(f.split("-")[0]), pct=Number($("cp_pct").value)||50;
+    let ing=state.movimientos.find(m=>m.tipo==="Ingreso"&&m.categoria==="Cuota escuela"&&m.mesRef===mes&&m.anio===anio);
+    if(ing){ ing.importe=mit; ing.fecha=f; ing.estado="Pagado"; ing.observaciones="Cuota total "+tot; }
+    else state.movimientos.push({id:crypto.randomUUID(),fecha:f,mesRef:mes,anio,tipo:"Ingreso",categoria:"Cuota escuela",subcategoria:"",descripcion:"Cuota escuela ("+pct+"%)",importe:mit,medioPago:"Transferencia",estado:"Pagado",observaciones:"Cuota total "+tot,recurrente:false});
+    saveState(); closeModal(); renderView(currentView); toast("Guardado en el historial.");
+  };
+  openModal();
+};
 function renderCuotaEscuela(){
   const el=document.getElementById("mmCuota"); if(!el) return;
   const ms=state.movimientos.filter(m=>m.tipo==="Ingreso"&&m.categoria==="Cuota escuela"&&m.anio===currentAnio).sort((a,b)=>(b.fecha||"")<(a.fecha||"")?-1:1);
   let html=`<div class="mm-tit">🎓 Cuota de la escuela</div>`;
   if(!ms.length) html+=`<p class="mm-p" style="margin-bottom:12px">Subí el PDF de la cuota: la app lee el total, calcula la mitad que te tiene que pagar y te deja el mensaje listo para WhatsApp.</p>`;
-  else html+=ms.map(m=>`<div class="al-row" onclick="editMov('${m.id}')"><div><div class="al-m">${m.mesRef}</div><div class="al-d">${m.observaciones||""}</div></div><span class="al-chip ${m.estado==="Pagado"?"ok":"wait"}">${m.estado==="Pagado"?"✓ ":"Por cobrar "}${fmtMoney(m.importe)}</span></div>`).join("");
-  html+=`<button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="openCuotaWA()">📄 Subir cuota y pedir por WhatsApp</button>`;
+  else html+=`<div class="al-tot">Historial ${currentAnio} · tocá un mes para marcarlo o corregirlo</div>`+ms.map(m=>`<div class="al-row" onclick="openMovActions('${m.id}')"><div><div class="al-m">${m.mesRef}</div><div class="al-d">${m.estado==="Pagado"?"Pagó el "+(m.fecha||"").split("-").reverse().slice(0,2).join("/")+" · ":""}${m.observaciones||""}</div></div><span class="al-chip ${m.estado==="Pagado"?"ok":"wait"}">${m.estado==="Pagado"?"✓ ":"Por cobrar "}${fmtMoney(m.importe)}</span></div>`).join("");
+  html+=`<button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="openCuotaWA()">📄 Subir cuota y pedir por WhatsApp</button><button class="btn" style="width:100%;margin-top:8px" onclick="openCuotaPagada()">+ Cargar un mes que ya pagó</button>`;
   el.innerHTML=html;
 }
 window.openAlimMes=function(mes,anio){
@@ -2732,7 +2754,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-01.42";
+const APP_BUILD = "2026-10-01.43";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
