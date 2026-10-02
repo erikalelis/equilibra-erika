@@ -435,6 +435,7 @@ tbody tr:hover{background:var(--petrol-100);}
 .imp-big{width:100%; font-size:30px; font-weight:800; text-align:right; padding:14px 16px; border:2px solid var(--petrol-600); border-radius:14px; background:var(--bg); color:var(--text); font-variant-numeric:tabular-nums;}
 .toast .undo{margin-left:12px; background:rgba(255,255,255,.18); color:#fff; border:0; border-radius:999px; padding:6px 14px; font-weight:700; cursor:pointer;}
 
+.bluvia-firma{text-align:center; font-size:11px; letter-spacing:.08em; color:var(--text-muted); opacity:.65; margin:6px 0 110px;}
 /* Toast */
 .toast{
   position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
@@ -670,6 +671,7 @@ tbody tr:hover{background:var(--petrol-100);}
         </div>
       </section>
 
+    <p class="bluvia-firma">hecho por Bluvia</p>
     </main>
   </div>
 
@@ -2392,7 +2394,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-01.24";
+const APP_BUILD = "2026-10-01.25";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
