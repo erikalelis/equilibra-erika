@@ -1774,35 +1774,46 @@ function renderAlimentos(){
 /* ===== Cuota de la escuela: PDF → total y 50% → WhatsApp ===== */
 function detectarCuota(texto){
   const t=String(texto||"").replace(/\u00a0/g," ");
-  const re=/\$?\s*(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d{4,9}(?:,\d{1,2})?|\d{1,3},\d{2})(?!\d)/g;
+  const re=/\$?\s*(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d{4,9}(?:[.,]\d{1,2})?|\d{1,3},\d{2})(?!\d)/g;
   const lineas=t.split(/\n+/), cand=[];
-  lineas.forEach(l=>{
-    const clave=/total|a pagar|importe|monto|cuota/i.test(l), fuerte=/total|a pagar/i.test(l)&&!/subtotal/i.test(l);
+  lineas.forEach((l,i)=>{
+    const ctx=l+" "+(lineas[i-1]||"");
+    const fuerte=/pesos|total|a pagar/i.test(ctx)&&!/subtotal/i.test(l), clave=/importe|monto|cuota/i.test(l);
     let r; re.lastIndex=0;
     while((r=re.exec(l))){ if(/^(19|20)\d\d$/.test(r[1])) continue; const v=parseImporteAR(r[1]); if(v>=1000&&v<10000000) cand.push({v,peso:fuerte?3:(clave?2:1)}); }
   });
   const mapa=new Map(); cand.forEach(c=>{ const p=mapa.get(c.v)||0; mapa.set(c.v,Math.max(p,c.peso)); });
   const lista=[...mapa.entries()].sort((a,b)=>b[1]-a[1]||b[0]-a[0]).map(x=>x[0]);
-  const mesDet=MESES.find(m=>new RegExp("\\b"+m+"\\b","i").test(t));
-  return {total:lista[0]||0, candidatos:lista.slice(0,4), mes:mesDet||null};
+  const cuenta={}; MESES.forEach(m=>{ const n=(t.match(new RegExp("\\b"+m+"\\b","gi"))||[]).length; if(n) cuenta[m]=n; });
+  const mesDet=Object.keys(cuenta).sort((a,b)=>cuenta[b]-cuenta[a])[0]||null;
+  const ma=mesDet&&t.match(new RegExp(mesDet+"\\s+(20\\d\\d)","i"));
+  return {total:lista[0]||0, candidatos:lista.slice(0,4), mes:mesDet, anio:ma?parseInt(ma[1]):null};
 }
-function cargarPdfJs(){
-  return new Promise((ok,mal)=>{
-    if(window.pdfjsLib) return ok(window.pdfjsLib);
-    const sc=document.createElement("script");
-    sc.src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
-    sc.onload=()=>{ window.pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"; ok(window.pdfjsLib); };
-    sc.onerror=()=>mal(new Error("sin conexión")); document.head.appendChild(sc);
-  });
+function cargarScript(url){
+  return new Promise((ok,mal)=>{ const sc=document.createElement("script"); sc.src=url; sc.onload=ok; sc.onerror=()=>mal(new Error("sin conexión")); document.head.appendChild(sc); });
 }
-async function textoDePdf(file){
+async function cargarPdfJs(){
+  if(window.pdfjsLib) return window.pdfjsLib;
+  await cargarScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js");
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  return window.pdfjsLib;
+}
+// Lee el PDF: primero como texto; si es una foto escaneada (como las facturas de la escuela), lo lee con OCR.
+async function textoDePdf(file, avisar){
   const lib=await cargarPdfJs(); const doc=await lib.getDocument({data:await file.arrayBuffer()}).promise; let out="";
+  const pg1=await doc.getPage(1);
   for(let p=1;p<=Math.min(doc.numPages,3);p++){
     const pg=await doc.getPage(p), c=await pg.getTextContent(); let y=null;
     c.items.forEach(it=>{ const yy=Math.round(it.transform[5]); if(y!==null&&Math.abs(yy-y)>2) out+="\n"; else if(y!==null) out+=" "; out+=it.str; y=yy; });
     out+="\n";
   }
-  return out;
+  if(out.replace(/\s/g,"").length>=30) return out;
+  if(avisar) avisar("Es una factura escaneada: la estoy leyendo con la cámara de la app (puede tardar un poquito)…");
+  const vp=pg1.getViewport({scale:2}), cv=document.createElement("canvas"); cv.width=vp.width; cv.height=vp.height;
+  await pg1.render({canvasContext:cv.getContext("2d"),viewport:vp}).promise;
+  if(!window.Tesseract) await cargarScript("https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js");
+  const res=await window.Tesseract.recognize(cv,"eng");
+  return res.data.text||"";
 }
 window.openCuotaWA=function(){
   state.config=state.config||{}; const cf=state.config.cuota=state.config.cuota||{};
@@ -1827,8 +1838,8 @@ window.openCuotaWA=function(){
     if(!/pdf/i.test(f.type)&&!/\.pdf$/i.test(f.name)){ $("cu_estado").textContent="Eso es una imagen: todavía no la puedo leer sola. Escribí el total abajo."; return; }
     $("cu_estado").textContent="Leyendo el PDF…";
     try{
-      const r=detectarCuota(await textoDePdf(f));
-      if(r.mes){ mes=r.mes; }
+      const r=detectarCuota(await textoDePdf(f,m=>{$("cu_estado").textContent=m;}));
+      if(r.mes){ mes=r.mes; } if(r.anio){ anioC=r.anio; }
       if(r.total){ $("cu_tot").value=r.total; $("cu_estado").textContent="Listo, leí la cuota de "+mes+". Si el total no es ese, tocá el correcto:"; }
       else $("cu_estado").textContent="No encontré el total en el PDF. Escribilo abajo.";
       $("cu_cand").innerHTML=r.candidatos.length>1?r.candidatos.map(v=>`<button type="button" class="btn" data-v="${v}">${fmtMoney(v)}</button>`).join(""):"";
@@ -2721,7 +2732,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-01.41";
+const APP_BUILD = "2026-10-01.42";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
