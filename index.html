@@ -1078,9 +1078,9 @@ function ajustesLimpieza2(st){
       const k=m.mesRef+"|"+m.anio; if(vc.has(k)) qc.add(m); else vc.set(k,m); });
     if(qc.size) st.movimientos=st.movimientos.filter(m=>!qc.has(m)); }
   // historial de Alimentos: si falta algún mes de la planilla, se vuelve a cargar (no pisa lo que ya tengas)
-  if(!st._alimSeed4){ st._alimSeed4=true; const ya=new Set((st.movimientos||[]).filter(m=>m.tipo==="Ingreso"&&m.categoria==="Alimentos"&&m.estado==="Pagado"&&m.anio===2026).map(m=>m.mesRef));
+  { st.config=st.config||{}; const bor=st.config.alimBorrados||[]; const ya=new Set((st.movimientos||[]).filter(m=>m.tipo==="Ingreso"&&m.categoria==="Alimentos"&&m.estado==="Pagado"&&m.anio===2026).map(m=>m.mesRef));
     [["2026-01-05",510934.65,"Pensión y aguinaldo"],["2026-02-06",325436.20,""],["2026-03-09",411010.23,""],["2026-04-06",326586.20,""],["2026-05-05",360713.37,""],["2026-06-04",337255.90,""],["2026-07-06",522000,"Pensión y aguinaldo"],["2026-08-06",354551.44,""]].forEach(([f,imp,obs])=>{
-      const mes=MESES[parseInt(f.split("-")[1])-1]; if(ya.has(mes)) return;
+      const mes=MESES[parseInt(f.split("-")[1])-1]; if(ya.has(mes)||bor.includes(mes+"|2026")) return;
       st.movimientos.push({id:crypto.randomUUID(),fecha:f,mesRef:mes,anio:2026,tipo:"Ingreso",categoria:"Alimentos",subcategoria:"",descripcion:"Alimentos (pensión)",importe:imp,medioPago:"Transferencia",estado:"Pagado",observaciones:obs,recurrente:false}); }); }
   // tarjetas repetidas (mismo mes, mismo importe): queda una sola
   const vistos=new Map(), quitar=new Set();
@@ -2194,6 +2194,7 @@ window.updateImporte = function(id, value){
 };
 window.deleteMov = function(id){
   if(!confirm("¿Eliminar este movimiento?")) return;
+  { const x=state.movimientos.find(m=>m.id===id); if(x&&x.categoria==="Alimentos"){ state.config=state.config||{}; (state.config.alimBorrados=state.config.alimBorrados||[]).push(x.mesRef+"|"+x.anio); } }
   state.movimientos = state.movimientos.filter(m=>m.id!==id);
   saveState(); renderView(currentView); toast("Movimiento eliminado."); if(window._alimAbierto) openAlimMes(window._alimAbierto.mes, window._alimAbierto.anio);
 };
@@ -2935,7 +2936,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-02.61";
+const APP_BUILD = "2026-10-02.62";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
