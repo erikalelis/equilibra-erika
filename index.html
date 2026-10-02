@@ -1841,6 +1841,13 @@ async function textoDePdf(file, avisar){
   const res=await window.Tesseract.recognize(cv,"eng",{logger:m=>{ if(avisar&&m.status==="recognizing text") avisar("Leyendo la factura… "+Math.round(m.progress*100)+"%"); }});
   return res.data.text||"";
 }
+function normTelWA(t){
+  let n=String(t||"").replace(/[^0-9]/g,"");
+  n=n.replace(/^0+/,"");
+  if(!n.startsWith("54") && n.length<=11){ n="549"+n.replace(/^(\d{2,4})15/,"$1"); }
+  if(n.startsWith("54") && n[2]!=="9" && n.length<=12) n="549"+n.slice(2);
+  return n;
+}
 window.openCuotaWA=function(){
   state.config=state.config||{}; const cf=state.config.cuota=state.config.cuota||{};
   const ym=ymStr(currentMes,currentAnio); let mes=currentMes, anioC=currentAnio;
