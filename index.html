@@ -252,6 +252,29 @@ main.content{padding:18px 16px calc(96px + env(safe-area-inset-bottom,0px)) 16px
 .mov-pend{color:#B8841A;font-weight:600}
 .mov-amt{font-size:16.5px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
 .mov-amt.pos{color:#2E8F6B}.mov-amt.neg{color:#B4413A}
+
+.mm-card{background:#fff;border-radius:20px;padding:16px;margin-bottom:14px;box-shadow:0 6px 20px rgba(10,40,50,.08);animation:vIn .45s ease-out both}
+.mm-tit{font-size:15.5px;font-weight:700;margin-bottom:12px;color:var(--text)}
+.mm-bars{display:flex;gap:8px;align-items:flex-end;height:150px}
+.mm-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;opacity:.55}
+.mm-col.now{opacity:1}
+.mm-pair{flex:1;width:100%;display:flex;gap:3px;align-items:flex-end;justify-content:center}
+.mm-pair i{display:block;width:42%;border-radius:6px 6px 2px 2px;min-height:3px;transition:height .7s cubic-bezier(.2,.8,.2,1)}
+.mm-pair i.in{background:#2E8F6B}.mm-pair i.out{background:#E07A5F}
+.mm-col span{font-size:13px;color:var(--text-muted);font-weight:600}
+.mm-leg{display:flex;gap:16px;justify-content:center;margin-top:12px;font-size:13.5px;color:var(--text-muted)}
+.mm-leg i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.mm-big{font-size:38px;font-family:var(--font-display);font-weight:700;line-height:1}
+.mm-big.pos{color:#2E8F6B}.mm-big.neg{color:#B4413A}
+.mm-p{font-size:15px;margin:8px 0 0;color:var(--text)}
+.mm-cat{margin-bottom:14px}
+.mm-cat-top{display:flex;justify-content:space-between;font-size:15.5px}
+.mm-cat-bar{height:8px;border-radius:99px;background:#eef2f3;margin-top:6px;overflow:hidden}
+.mm-cat-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#1F7A86,#E8B84B)}
+.mm-cat small{font-size:13px;font-weight:600}.mm-cat small.neg{color:#B4413A}.mm-cat small.pos{color:#2E8F6B}
+.mv-cat{display:flex;justify-content:space-between;align-items:center;font-size:16.5px;font-weight:700;margin:18px 4px 8px}
+.mv-cat:first-child{margin-top:4px}
+.mv-cat b{font-family:var(--font-display);font-weight:600}
 .hero-frase{position:relative;z-index:1;font-size:15.5px;margin-top:6px;opacity:.92;font-weight:500}
 .dona-card{background:var(--card,#fff);border-radius:20px;padding:16px;margin:14px 0;box-shadow:0 6px 20px rgba(10,40,50,.08);display:flex;flex-direction:column;gap:14px;align-items:center}
 .dona-card:empty{display:none}
@@ -636,20 +659,21 @@ tbody tr:hover{background:var(--petrol-100);}
 
       <!-- MOVIMIENTOS -->
       <section class="view" id="view-movimientos">
-        <div class="mov-resumen" id="movResumen"></div>
-        <div class="mov-filtros">
-          <button class="seg active" data-t="" onclick="setMovTipo(this)">Todos</button>
-          <button class="seg" data-t="Gasto" onclick="setMovTipo(this)">Gastos</button>
-          <button class="seg" data-t="Ingreso" onclick="setMovTipo(this)">Ingresos</button>
-        </div>
-        <input class="search-input" id="movSearch" placeholder="🔍 Buscar movimiento…" style="width:100%;margin-bottom:12px">
+        <input class="search-input" id="movSearch" placeholder="🔍 Buscar un movimiento…" style="width:100%;margin-bottom:14px">
         <div style="display:none">
-          <select id="filtTipo"><option value=""></option><option value="Ingreso"></option><option value="Gasto"></option></select>
+          <select id="filtTipo"><option value=""></option></select>
           <select id="filtCategoria"><option value=""></option></select>
           <select id="filtEstado"><option value=""></option></select>
           <input type="checkbox" id="selAll"><button id="btnDeleteSel"></button>
         </div>
-        <div class="mov-list" id="movList"></div>
+        <div id="movResultados"></div>
+        <div id="mesAMes">
+          <div class="mm-card"><div class="mm-tit">Últimos 6 meses</div><div class="mm-bars" id="mmBars"></div>
+            <div class="mm-leg"><span><i style="background:#2E8F6B"></i>Entró</span><span><i style="background:#E07A5F"></i>Salió</span></div></div>
+          <div class="mm-card" id="mmComp"></div>
+          <div class="mm-card"><div class="mm-tit">En qué gastaste más</div><div id="mmCats"></div></div>
+        </div>
+        <div class="mov-list" id="movList" style="display:none"></div>
         <div class="empty-state" id="movEmpty" style="display:none">No hay movimientos cargados uno por uno para este mes. Si en Inicio ves un total, es el resumen histórico — usá «Nuevo movimiento» para empezar a cargar el detalle.</div>
       </section>
 
@@ -763,7 +787,7 @@ const SEED_VERSION = 3;
 
 const MENU = [
   {id:"inicio", label:"Inicio", soon:false},
-  {id:"movimientos", label:"Movimientos", soon:false},
+  {id:"movimientos", label:"Mes a mes", soon:false},
   {id:"recurrentes", label:"Gastos recurrentes", soon:false},
   {id:"tarjetas", label:"Tarjetas", soon:false},
   {id:"deudas", label:"Préstamos", soon:false},
@@ -1181,7 +1205,7 @@ function dotIcon(){
 /* ---------- Bottom tab bar (formato app) ---------- */
 const BOTTOM_TABS = [
   {id:"inicio", label:"Inicio", icon:"home"},
-  {id:"movimientos", label:"Movs.", icon:"list"},
+  {id:"movimientos", label:"Mes a mes", icon:"list"},
   {id:"tarjetas", label:"Tarjetas", icon:"card"},
   {id:"deudas", label:"Préstamos", icon:"debt"},
   {id:"mas", label:"Más", icon:"more"},
@@ -1262,7 +1286,7 @@ function switchView(item){
 function subtitleFor(id){
   return {
     inicio:"Resumen ejecutivo del mes",
-    movimientos:"Ingresos y gastos registrados",
+    movimientos:"Cómo vienen tus meses",
     recurrentes:"Gastos que se repiten cada mes",
     tarjetas:"Tarjetas, cuotas y simulador",
     deudas:"Tus cuotas mes a mes",
@@ -1410,6 +1434,12 @@ function renderInicio(){
   renderIngresos();
   renderCubrirMes(tot);
 }
+const CAT_ICO={"Vivienda":"🏠","Alimentación":"🛒","Supermercado":"🛒","Alimentos":"🛒","Servicios":"💡","Préstamos":"🏦","Tarjetas":"💳","Salud y bienestar":"💪","Salud":"💪","Educación":"🎓","Transporte":"🚗","Ahorro":"🐷","Sueldo":"💼","Otros ingresos":"✨","Ocio":"🎉","Otros":"🧾"};
+function agrupaCat(arr){
+  const g={}; arr.forEach(m=>{(g[m.categoria||"Otros"]=g[m.categoria||"Otros"]||[]).push(m)});
+  return Object.entries(g).sort((a,b)=>b[1].reduce((x,m)=>x+Number(m.importe||0),0)-a[1].reduce((x,m)=>x+Number(m.importe||0),0))
+   .map(([k,l])=>`<div class="mv-cat"><span>${CAT_ICO[k]||"🧾"} ${k}</span><b>${fmtMoney(l.reduce((x,m)=>x+Number(m.importe||0),0))}</b></div><div class="mv-list">${l.map(movCard).join("")}</div>`).join("");
+}
 function renderPendientes(){
   const gs = movsDelMes(currentMes, currentAnio).filter(m=>m.tipo==="Gasto")
     .sort((a,b)=> (a.fecha||"") < (b.fecha||"") ? -1 : 1);
@@ -1421,7 +1451,7 @@ function renderPendientes(){
   empty.style.display = (pend.length===0 && pag.length>0) ? "block" : "none";
   const pct = suma(gs)>0 ? Math.round(suma(pag)/suma(gs)*100) : 0;
   let html = gs.length ? `<div class="mv-sub"><div class="t">Ya pagaste <b>${fmtMoney(suma(pag))}</b> de ${fmtMoney(suma(gs))}</div><div class="mv-bar"><i style="width:${pct}%"></i></div></div>` : "";
-  html += `<div class="mv-list">${pend.map(movCard).join("")}</div>`;
+  html += agrupaCat(pend);
   if(pag.length) html += `<details class="mv-det"${window._pagOpen?" open":""} ontoggle="window._pagOpen=this.open"><summary>Ya pagados (${pag.length})</summary><div class="mv-list">${pag.map(movCard).join("")}</div></details>`;
   list.innerHTML = html;
 }
@@ -1448,7 +1478,7 @@ function renderIngresos(){
   const total = ing.reduce((a,m)=>a+Number(m.importe||0),0);
   document.getElementById("ingCount").textContent = "";
   document.getElementById("ingList").innerHTML = ing.length
-    ? `<div class="mv-sub"><div class="t">Ya cobraste <b>${fmtMoney(recibido)}</b> de ${fmtMoney(total)}</div><div class="mv-bar"><i style="width:${total>0?Math.round(recibido/total*100):0}%"></i></div></div><div class="mv-list">${ing.map(movCard).join("")}</div>`
+    ? `<div class="mv-sub"><div class="t">Ya cobraste <b>${fmtMoney(recibido)}</b> de ${fmtMoney(total)}</div><div class="mv-bar"><i style="width:${total>0?Math.round(recibido/total*100):0}%"></i></div></div>${agrupaCat(ing)}`
     : `<div class="empty-state">No hay ingresos cargados en ${currentMes}.</div>`;
 }
 function renderCubrirMes(tot){
@@ -1664,48 +1694,46 @@ function populateCategoryFilter(){
   const all = [...CAT_INGRESO, ...CAT_GASTO];
   sel.innerHTML = `<option value="">Todas las categorías</option>` + all.map(c=>`<option value="${c}">${c}</option>`).join("");
 }
-const CAT_ICO={"Vivienda":"🏠","Alimentación":"🛒","Supermercado":"🛒","Alimentos":"🛒","Servicios":"💡","Préstamos":"🏦","Tarjetas":"💳","Salud y bienestar":"💪","Salud":"💪","Educación":"🎓","Transporte":"🚗","Ahorro":"🐷","Sueldo":"💼","Otros ingresos":"✨","Ocio":"🎉"};
-window.setMovTipo=function(btn){
-  document.getElementById("filtTipo").value=btn.dataset.t;
-  document.querySelectorAll(".mov-filtros .seg").forEach(x=>x.classList.toggle("active",x===btn));
-  renderMovimientos();
-};
 function renderMovimientos(){
-  const list = document.getElementById("movList");
-  const todos = movsDelMes(currentMes, currentAnio);
-  const sum=t=>todos.filter(m=>m.tipo===t).reduce((a,m)=>a+Number(m.importe||0),0);
-  const ent=sum("Ingreso"), sal=sum("Gasto");
-  document.getElementById("movResumen").innerHTML = todos.length ? `<div><small>Entró</small><b class="pos">${fmtMoney(ent)}</b></div><div><small>Salió</small><b class="neg">${fmtMoney(sal)}</b></div><div><small>Quedó</small><b>${fmtMoney(ent-sal)}</b></div>` : "";
-  let movs = todos;
-  const q = (document.getElementById("movSearch").value||"").toLowerCase();
-  const fTipo = document.getElementById("filtTipo").value;
-  if(q) movs = movs.filter(m=>(m.descripcion||"").toLowerCase().includes(q)||(m.categoria||"").toLowerCase().includes(q));
-  if(fTipo) movs = movs.filter(m=>m.tipo===fTipo);
-  movs = [...movs].sort((a,b)=> (b.fecha||"") < (a.fecha||"") ? -1 : (b.fecha||"") > (a.fecha||"") ? 1 : 0);
-  if(movs.length===0){
-    list.innerHTML=""; document.getElementById("movEmpty").style.display="block";
+  const q=(document.getElementById("movSearch").value||"").trim().toLowerCase();
+  const res=document.getElementById("movResultados"), mm=document.getElementById("mesAMes"), empty=document.getElementById("movEmpty");
+  empty.style.display="none";
+  if(q){
+    mm.style.display="none";
+    const found=state.movimientos.filter(m=>(m.descripcion||"").toLowerCase().includes(q)||(m.categoria||"").toLowerCase().includes(q))
+      .sort((a,b)=>(b.fecha||"")<(a.fecha||"")?-1:1).slice(0,40);
+    res.innerHTML = found.length ? `<div class="mov-card-list">${found.map(m=>{
+      const ing=m.tipo==="Ingreso", f=(m.fecha||"").split("-").reverse().join("/");
+      return `<div class="mov-row" onclick="openMovActions('${m.id}')"><div class="mov-ico ${ing?'in':'out'}">${CAT_ICO[m.categoria]||(ing?"💰":"🧾")}</div><div class="mov-mid"><div class="mov-t">${m.descripcion}</div><div class="mov-s">${m.categoria||""} · ${f}</div></div><div class="mov-amt ${ing?'pos':'neg'}">${ing?"+":"−"}${fmtMoney(m.importe)}</div></div>`;}).join("")}</div>` : `<div class="empty-state">No encontré nada con «${q}».</div>`;
     return;
   }
-  document.getElementById("movEmpty").style.display="none";
-  const DIAS=["dom","lun","mar","mié","jue","vie","sáb"], MESES=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-  let html="", last=null;
-  movs.forEach(m=>{
-    const f=m.fecha||"";
-    if(f!==last){
-      last=f; let tit="Sin fecha";
-      if(f){ const d=new Date(f+"T12:00:00"); if(!isNaN(d)) tit=`${DIAS[d.getDay()]} ${d.getDate()} ${MESES[d.getMonth()]}`; }
-      if(html) html+=`</div>`;
-      html+=`<div class="mov-dia">${tit}</div><div class="mov-card-list">`;
-    }
-    const ing=m.tipo==="Ingreso", pend=m.estado!=="Pagado";
-    html+=`<div class="mov-row" onclick="openMovActions('${m.id}')">
-      <div class="mov-ico ${ing?'in':'out'}">${CAT_ICO[m.categoria]||(ing?"💰":"🧾")}</div>
-      <div class="mov-mid"><div class="mov-t">${m.descripcion}</div>
-        <div class="mov-s">${m.categoria||""}${pend?` · <span class="mov-pend">${ing?"Por cobrar":"Por pagar"}</span>`:""}</div></div>
-      <div class="mov-amt ${ing?'pos':'neg'}">${ing?"+":"−"}${fmtMoney(m.importe)}</div>
-    </div>`;
-  });
-  list.innerHTML = html+"</div>";
+  res.innerHTML=""; mm.style.display="block";
+  // últimos 6 meses
+  const meses=[]; let cur={mes:currentMes,anio:currentAnio};
+  for(let i=0;i<6;i++){ meses.unshift(cur); cur=mesAnterior(cur.mes,cur.anio); }
+  const datos=meses.map(x=>({...x,t:totalesDelMes(x.mes,x.anio)}));
+  const max=Math.max(1,...datos.map(d=>Math.max(d.t.ingresos,d.t.gastos)));
+  document.getElementById("mmBars").innerHTML=datos.map((d,i)=>`<div class="mm-col${i===5?' now':''}"><div class="mm-pair"><i class="in" style="height:${Math.round(d.t.ingresos/max*100)}%"></i><i class="out" style="height:${Math.round(d.t.gastos/max*100)}%"></i></div><span>${d.mes.slice(0,3)}</span></div>`).join("");
+  // comparación
+  const now=datos[5].t, prev=datos[4].t, pn=datos[4].mes;
+  let comp="";
+  if(now.sinDatos){ comp=`<div class="mm-tit">Este mes</div><p class="mm-p">Todavía no hay datos cargados en ${currentMes}.</p>`; }
+  else if(prev.sinDatos||prev.gastos===0){ comp=`<div class="mm-tit">Este mes</div><p class="mm-p">Gastaste <b>${fmtMoney(now.gastos)}</b> y cobraste <b>${fmtMoney(now.ingresos)}</b>.</p>`; }
+  else {
+    const dg=(now.gastos-prev.gastos)/prev.gastos*100, up=dg>0;
+    comp=`<div class="mm-tit">Comparado con ${pn}</div>
+      <div class="mm-big ${up?'neg':'pos'}">${up?"▲":"▼"} ${Math.abs(Math.round(dg))}%</div>
+      <p class="mm-p">${Math.abs(Math.round(dg))===0?"Gastaste lo mismo que en "+pn+".":(up?"Gastaste más que en ":"Gastaste menos que en ")+pn+(up?". Revisá en qué se fue 👇":". ¡Muy bien! 👏")}</p>`;
+  }
+  document.getElementById("mmComp").innerHTML=comp;
+  // categorías
+  const cn=gastosPorCategoria(currentMes,currentAnio), pm=mesAnterior(currentMes,currentAnio), cp=gastosPorCategoria(pm.mes,pm.anio);
+  const arr=Object.entries(cn).filter(([k,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const mx=arr.length?arr[0][1]:1;
+  document.getElementById("mmCats").innerHTML=arr.length?arr.map(([k,v])=>{
+    const p=cp[k]||0; let d="";
+    if(p>0){ const x=Math.round((v-p)/p*100); if(x!==0) d=`<small class="${x>0?'neg':'pos'}">${x>0?"▲":"▼"} ${Math.abs(x)}%</small>`; }
+    return `<div class="mm-cat"><div class="mm-cat-top"><span>${CAT_ICO[k]||"🧾"} ${k}</span><b>${fmtMoney(v)}</b></div><div class="mm-cat-bar"><i style="width:${Math.round(v/mx*100)}%"></i></div>${d}</div>`;}).join(""):`<p class="mm-p">Todavía no hay gastos cargados este mes.</p>`;
 }
 window.openMovActions = function(id){
   const m = state.movimientos.find(x=>x.id===id);
@@ -2495,7 +2523,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-01.33";
+const APP_BUILD = "2026-10-01.34";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
