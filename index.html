@@ -1019,10 +1019,20 @@ function ajustesAlimentos(st){
   });
   if(st===state) try{ saveState(); }catch(e){}
 }
+// Cuota de Septiembre 2026 (factura por $317.510, él paga el 50%): ya fue pagada. Se carga una sola vez en el historial.
+function ajustesCuotaSep(st){
+  if(st._cuotaSeed1) return;
+  st._cuotaSeed1 = true;
+  if((st.movimientos||[]).some(m=>m.tipo==="Ingreso" && m.categoria==="Cuota escuela" && m.mesRef==="Septiembre" && m.anio===2026)) return;
+  st.movimientos.push({ id:crypto.randomUUID(), fecha:"2026-09-10", mesRef:"Septiembre", anio:2026, tipo:"Ingreso", categoria:"Cuota escuela", subcategoria:"",
+    descripcion:"Cuota escuela (50%)", importe:158755, medioPago:"Transferencia", estado:"Pagado", observaciones:"Cuota total 317510", recurrente:false });
+  if(st===state) try{ saveState(); }catch(e){}
+}
 function sincronizarMes(mes, anio, st, forzar){
   st = st || state;
   ajustesMia(st);
   ajustesAlimentos(st);
+  ajustesCuotaSep(st);
   if((st.deudas||[]).some(d=>RENOMBRAR_PRESTAMOS[d.nombre])) actualizarMovsPrestamos(st);
   const ym = ymStr(mes, anio);
   if(ym < SYNC_DESDE) return 0;
@@ -2769,7 +2779,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-01.44";
+const APP_BUILD = "2026-10-01.45";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
