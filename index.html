@@ -597,7 +597,8 @@ tbody tr:hover{background:var(--petrol-100);}
 .imp-big{width:100%; font-size:30px; font-weight:800; text-align:right; padding:14px 16px; border:2px solid var(--petrol-600); border-radius:14px; background:var(--bg); color:var(--text); font-variant-numeric:tabular-nums;}
 .toast .undo{margin-left:12px; background:rgba(255,255,255,.18); color:#fff; border:0; border-radius:999px; padding:6px 14px; font-weight:700; cursor:pointer;}
 
-.bluvia-firma{text-align:center; font-size:11px; letter-spacing:.08em; color:var(--text-muted); opacity:.65; margin:6px 0 110px;}
+.bluvia-firma{text-align:center; font-size:15px; letter-spacing:.06em; color:var(--text-muted); opacity:.85; margin:34px 0 96px;}
+.mv-venc{background:#EAF3F4;border:1px solid #BFD9DC;color:#145366;border-radius:99px;padding:5px 12px;font-size:13px;font-weight:600;margin-top:6px;cursor:pointer}
 /* Toast */
 .toast{
   position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
@@ -1060,11 +1061,28 @@ function ajustesCuotaSep(st){
   st._cuotaSeed1 = true;
   if((st.movimientos||[]).some(m=>m.tipo==="Ingreso" && m.categoria==="Cuota escuela" && m.mesRef==="Septiembre" && m.anio===2026)) return;
   st.movimientos.push({ id:crypto.randomUUID(), fecha:"2026-09-10", mesRef:"Septiembre", anio:2026, tipo:"Ingreso", categoria:"Cuota escuela", subcategoria:"",
-    descripcion:"Cuota escuela (50%)", importe:158755, medioPago:"Transferencia", estado:"Pagado", observaciones:"Cuota total 317510", recurrente:false });
+    descripcion:"Cuota escuela (50%)", importe:158755, medioPago:"Transferencia", estado:"Pagado", observaciones:"Cuota total $317.510", recurrente:false });
   if(st===state) try{ saveState(); }catch(e){}
+}
+function ajustesLimpieza2(st){
+  (st.movimientos||[]).forEach(m=>{ const k=/^Cuota total (\d+)$/.exec(m.observaciones||""); if(k) m.observaciones="Cuota total "+fmtMoney(Number(k[1])); });
+  if(!st._limpiaSep1){
+    st._limpiaSep1=true; st.config=st.config||{};
+    const borr=(st.movimientos||[]).filter(m=>m.tipo==="Gasto"&&m.estado==="Pendiente"&&m.mesRef==="Septiembre"&&m.anio===2026);
+    if(borr.length){ st.config.borradosSep=borr; st.movimientos=st.movimientos.filter(m=>!borr.includes(m)); }
+  }
+  // tarjetas repetidas (mismo mes, mismo importe): queda una sola
+  const vistos=new Map(), quitar=new Set();
+  [...(st.movimientos||[])].sort((a,b)=>(a.estado==="Pagado"?0:1)-(b.estado==="Pagado"?0:1)||((a.origenTarjeta?0:1)-(b.origenTarjeta?0:1))).forEach(m=>{
+    if(m.tipo!=="Gasto"||m.categoria!=="Tarjetas") return;
+    const k=m.mesRef+"|"+m.anio+"|"+Number(m.importe);
+    if(vistos.has(k)){ if(m.estado!=="Pagado") quitar.add(m); } else vistos.set(k,m);
+  });
+  if(quitar.size){ st.movimientos=st.movimientos.filter(m=>!quitar.has(m)); }
 }
 function sincronizarMes(mes, anio, st, forzar){
   st = st || state;
+  ajustesLimpieza2(st);
   ajustesMia(st);
   ajustesAlimentos(st);
   ajustesCuotaSep(st);
@@ -1221,10 +1239,12 @@ function movCard(m){
   const cat = (m.categoria===m.descripcion) ? "" : m.categoria;
   const meta = !conDia ? cat : (cat?cat+" · ":"")+(ing ? `día ${dia}` : `vence día ${dia}`); void 0;
   const _old = !conDia ? `${m.categoria}` : (ing ? `${m.categoria} · día ${dia}` : `${m.categoria} · vence día ${dia}`);
+  const mm=m.fecha?m.fecha.split("-"):[], fechaTxt=m.fecha?`${parseInt(mm[2])}/${parseInt(mm[1])}`:"—";
+  const venc = (!ing && !hecho) ? `<button class="mv-venc" onclick="openVencimiento('${m.id}')">📅 Vence ${fechaTxt} · cambiar</button>` : "";
   return `<div class="mv-item${hecho?" hecho":""}">
-    <div class="mv-top"><div class="mv-n">${m.descripcion}</div>
+    <div class="mv-top"><div class="mv-n" onclick="openMovActions('${m.id}')">${m.descripcion}</div>
       <button class="mv-a ${ing?"ing":"gas"}" onclick="editImporte('${m.id}')" aria-label="Cambiar importe">${fmtMoneyHTML(m.importe)}</button></div>
-    <div class="mv-bot"><div class="mv-m">${meta}</div>
+    <div class="mv-bot"><div class="mv-m">${meta}${venc?`<div>${venc}</div>`:""}</div>
       <button class="mv-bt ${hecho?"ok":"por"}" onclick="togglePagado('${m.id}')">${txtBtn}</button></div>
   </div>`;
 }
@@ -1468,8 +1488,11 @@ function hoyISO(){ const d=new Date(); return d.getFullYear()+"-"+pad2(d.getMont
 function difDias(iso){ const [y,m,d]=iso.split("-").map(Number), h=hoyISO().split("-").map(Number); return Math.round((Date.UTC(y,m-1,d)-Date.UTC(h[0],h[1]-1,h[2]))/86400000); }
 function calcularAvisos(){
   const a=avCfg(), out=[], hoy=new Date();
+  const ymHoy=hoyISO().slice(0,7); let sinDia=0;
   (state.movimientos||[]).forEach(m=>{
-    if(m.tipo==="Gasto" && m.estado==="Pendiente" && m.fecha){
+    if(m.tipo==="Gasto" && m.estado==="Pendiente" && m.fecha && m.fecha.slice(0,7)>=ymHoy){
+      const real = m.fechaOk || m.origenPrestamo || m.origenTarjeta;
+      if(!real){ sinDia++; return; }
       const d=difDias(m.fecha);
       if(d<0 && d>=-30) out.push({id:"v"+m.id,rojo:true,desde:m.fecha,texto:`Vencido hace ${-d} día${d===-1?"":"s"}: ${m.descripcion||m.categoria} · ${fmtMoney(m.importe)}`});
       else if(d>=0 && d<=a.dias) out.push({id:"v"+m.id,rojo:d===0,desde:addDiasISO(m.fecha,-a.dias),texto:(d===0?"Vence HOY":d===1?"Vence mañana":`Vence en ${d} días`)+`: ${m.descripcion||m.categoria} · ${fmtMoney(m.importe)}`});
@@ -1479,6 +1502,7 @@ function calcularAvisos(){
       if(n>=a.rojoDias) out.push({id:"c"+m.id,rojo:true,desde:m.enviadaEl,texto:`Todavía no te pagaron la cuota de ${m.mesRef} (enviada hace ${n} días)`});
     }
   });
+  if(sinDia>0) out.push({id:"sd"+ymHoy,rojo:false,desde:hoyISO(),texto:`Para recibir avisos, elegí el día de vencimiento de tus gastos (tocá 📅 en Pagos). Faltan ${sinDia}.`,silencioso:true});
   const mesN=MESES[hoy.getMonth()];
   const tiene=(state.movimientos||[]).some(m=>m.categoria==="Cuota escuela"&&m.mesRef===mesN&&m.anio===hoy.getFullYear());
   if(!tiene && hoy.getDate()>=a.diaCuota) out.push({id:"p"+mesN+hoy.getFullYear(),rojo:false,desde:hoyISO(),texto:`No te olvides de pedir la cuota de ${mesN}`});
@@ -1487,7 +1511,7 @@ function calcularAvisos(){
 function addDiasISO(iso,n){ const [y,m,d]=iso.split("-").map(Number); const x=new Date(Date.UTC(y,m-1,d+n)); return x.getUTCFullYear()+"-"+pad2(x.getUTCMonth()+1)+"-"+pad2(x.getUTCDate()); }
 function avisosHTML(){ const l=calcularAvisos(); if(!l.length) return ""; return l.map(x=>`<div class="av-item ${x.rojo?"av-rojo":""}">${x.rojo?"🔴":"🔔"} ${x.texto}</div>`).join(""); }
 async function guardarAvisosParaSW(){
-  try{ if(!("caches" in window)) return; const c=await caches.open("equilibra-avisos"); await c.put("/avisos.json",new Response(JSON.stringify({hora:avCfg().hora,items:calcularAvisos().map(x=>({id:x.id,desde:x.desde,texto:x.texto}))}))); }catch(e){}
+  try{ if(!("caches" in window)) return; const c=await caches.open("equilibra-avisos"); await c.put("/avisos.json",new Response(JSON.stringify({hora:avCfg().hora,items:calcularAvisos().filter(x=>!x.silencioso).map(x=>({id:x.id,desde:x.desde,texto:x.texto}))}))); }catch(e){}
 }
 async function mostrarNotif(titulo,texto,tag){
   try{ const reg=await navigator.serviceWorker.ready; await reg.showNotification(titulo,{body:texto,tag:tag||"eq",icon:"icon-192.png",badge:"badge-96.png",vibrate:[300,150,300,150,600],requireInteraction:true,renotify:true}); }catch(e){}
@@ -1497,7 +1521,7 @@ function revisarAvisos(){
   const a=avCfg(); if(!a.on || !("Notification" in window) || Notification.permission!=="granted") return;
   if(new Date().getHours()<a.hora) return;
   a.vistos=a.vistos||{}; const hoy=hoyISO(); let cambio=false;
-  calcularAvisos().forEach(x=>{ if(a.vistos[x.id]!==hoy && difDias(x.desde)<=0){ a.vistos[x.id]=hoy; cambio=true; mostrarNotif("Equilibra",x.texto,x.id); } });
+  calcularAvisos().filter(x=>!x.silencioso).forEach(x=>{ if(a.vistos[x.id]!==hoy && difDias(x.desde)<=0){ a.vistos[x.id]=hoy; cambio=true; mostrarNotif("Equilibra",x.texto,x.id); } });
   if(cambio) saveState();
 }
 window.openAvisos=function(){
@@ -1961,8 +1985,8 @@ window.openCuotaWA=function(){
     // ingreso automático: la mitad que te tiene que pagar
     const mi=MESES.indexOf(mes)+1, f=`${anioC}-${pad2(mi)}-10`;
     let ing=state.movimientos.find(m=>m.tipo==="Ingreso"&&m.categoria==="Cuota escuela"&&m.mesRef===mes&&m.anio===anioC);
-    if(ing){ if(ing.estado!=="Pagado"){ ing.importe=mit; ing.observaciones="Cuota total "+tot; ing.enviadaEl=hoyISO(); } }
-    else state.movimientos.push({id:crypto.randomUUID(),fecha:f,mesRef:mes,anio:anioC,tipo:"Ingreso",categoria:"Cuota escuela",subcategoria:"",descripcion:"Cuota escuela ("+pct+"%)",importe:mit,medioPago:"Transferencia",estado:"Pendiente",observaciones:"Cuota total "+tot,recurrente:false,enviadaEl:hoyISO()});
+    if(ing){ if(ing.estado!=="Pagado"){ ing.importe=mit; ing.observaciones="Cuota total "+fmtMoney(tot); ing.enviadaEl=hoyISO(); } }
+    else state.movimientos.push({id:crypto.randomUUID(),fecha:f,mesRef:mes,anio:anioC,tipo:"Ingreso",categoria:"Cuota escuela",subcategoria:"",descripcion:"Cuota escuela ("+pct+"%)",importe:mit,medioPago:"Transferencia",estado:"Pendiente",observaciones:"Cuota total "+fmtMoney(tot),recurrente:false,enviadaEl:hoyISO()});
     saveState();
     const msg=`Hola ${cf.nombre},\n\nEspero que te encuentres bien.\n\nTe paso la cuota referente a ${mes.toLowerCase()}.\n\nTotal de la cuota: ${fmtMoney(tot)}\nA pagar (${pct}%): ${fmtMoney(mit)}\n\nGracias!`;
     // con PDF: se comparte el archivo + el mensaje (en WhatsApp elegís el chat de él y tocás enviar)
@@ -1991,8 +2015,8 @@ window.openCuotaPagada=function(){
     const mit=calc(), tot=Number($("cp_tot").value)||0, mes=$("cp_mes").value, f=$("cp_fecha").value; if(!mit||!f){ toast("Poné el total y el día."); return; }
     const anio=parseInt(f.split("-")[0]), pct=Number($("cp_pct").value)||50;
     let ing=state.movimientos.find(m=>m.tipo==="Ingreso"&&m.categoria==="Cuota escuela"&&m.mesRef===mes&&m.anio===anio);
-    if(ing){ ing.importe=mit; ing.fecha=f; ing.estado="Pagado"; ing.observaciones="Cuota total "+tot; }
-    else state.movimientos.push({id:crypto.randomUUID(),fecha:f,mesRef:mes,anio,tipo:"Ingreso",categoria:"Cuota escuela",subcategoria:"",descripcion:"Cuota escuela ("+pct+"%)",importe:mit,medioPago:"Transferencia",estado:"Pagado",observaciones:"Cuota total "+tot,recurrente:false});
+    if(ing){ ing.importe=mit; ing.fecha=f; ing.estado="Pagado"; ing.observaciones="Cuota total "+fmtMoney(tot); }
+    else state.movimientos.push({id:crypto.randomUUID(),fecha:f,mesRef:mes,anio,tipo:"Ingreso",categoria:"Cuota escuela",subcategoria:"",descripcion:"Cuota escuela ("+pct+"%)",importe:mit,medioPago:"Transferencia",estado:"Pagado",observaciones:"Cuota total "+fmtMoney(tot),recurrente:false});
     saveState(); closeModal(); renderView(currentView); toast("Guardado en el historial.");
   };
   openModal();
@@ -2074,10 +2098,17 @@ function renderMovimientos(){
   if(now.sinDatos){ comp=`<div class="mm-tit">Cómo vas este mes</div><p class="mm-p">Todavía no hay datos cargados en ${currentMes}.</p>`; }
   else if(prev.sinDatos||prev.gastos===0){ comp=`<div class="mm-tit">Cómo vas este mes</div><p class="mm-p">Gastaste <b>${fmtMoney(now.gastos)}</b> y cobraste <b>${fmtMoney(now.ingresos)}</b>.</p>`; }
   else {
-    const dg=(now.gastos-prev.gastos)/prev.gastos*100, up=dg>0;
-    comp=`<div class="mm-tit">Cómo vas este mes <span class="mm-vs">vs ${pn}</span></div>
+    const hoyD=new Date(), esActual=(currentMes===MESES[hoyD.getMonth()]&&currentAnio===hoyD.getFullYear());
+    const pagHasta=(mes,anio,dia)=>movsDelMes(mes,anio).filter(m=>m.tipo==="Gasto"&&m.estado==="Pagado"&&(!dia||parseInt((m.fecha||"").split("-")[2])<=dia)).reduce((a,m)=>a+Number(m.importe||0),0);
+    let a=now.gastos, b=prev.gastos, etiqueta="";
+    if(esActual){ const dia=hoyD.getDate(); a=pagHasta(currentMes,currentAnio,dia); b=pagHasta(prev.mes,prev.anio,dia); etiqueta=` al día ${dia}`; }
+    if(!b){ comp=`<div class="mm-tit">Cómo vas este mes</div><p class="mm-p">Hasta hoy pagaste <b>${fmtMoney(a)}</b> en ${currentMes}. Todavía es muy pronto para comparar con ${pn}.</p>`; }
+    else {
+    const dg=(a-b)/b*100, up=dg>0;
+    comp=`<div class="mm-tit">Cómo vas este mes <span class="mm-vs">vs ${pn}${etiqueta}</span></div>
       <div class="mm-big ${up?'neg':'pos'}">${up?"▲":"▼"} ${Math.abs(Math.round(dg))}%</div>
-      <p class="mm-p">${Math.abs(Math.round(dg))===0?"Gastaste lo mismo que en "+pn+".":(up?"Gastaste más que en ":"Gastaste menos que en ")+pn+(up?". Revisá en qué se fue 👇":". ¡Muy bien! 👏")}</p>`;
+      <p class="mm-p">${esActual?`Pagaste ${fmtMoney(a)}; en ${pn}, a esta altura, ${fmtMoney(b)}. `:""}${Math.abs(Math.round(dg))===0?"Igual que en "+pn+".":(up?"Más que en ":"Menos que en ")+pn+(up?". Revisá en qué se fue 👇":". ¡Muy bien! 👏")}</p>`;
+    }
   }
   document.getElementById("mmComp").innerHTML=comp;
   // categorías
@@ -2117,7 +2148,7 @@ window.openVencimiento=function(id){
    <div class="modal-actions" style="margin-top:12px"><button class="btn btn-primary" id="vc_ok">Guardar</button><button class="btn" onclick="closeModal()">Cancelar</button></div>`;
   document.getElementById("vc_ok").onclick=()=>{
     const f=document.getElementById("vc_f").value; if(!f){ toast("Elegí la fecha."); return; }
-    const dia=parseInt(f.split("-")[2]); m.fecha=f;
+    const dia=parseInt(f.split("-")[2]); m.fecha=f; m.fechaOk=true;
     const sig=document.getElementById("vc_sig"); 
     if(sig&&sig.checked){
       (state.recurrentes||[]).filter(r=>r.descripcion===m.descripcion).forEach(r=>{ r.fechaHabitual=String(dia); r.vencimiento=String(dia); });
@@ -2215,7 +2246,7 @@ function openMovModal(mov){
     };
     if(!data.descripcion){ toast("Ingresá una descripción."); return; }
     if(isNew){ state.movimientos.push({id:crypto.randomUUID(), ...data}); }
-    else { const impAntes = mov.importe; Object.assign(mov, data); if((mov.origenPrestamo || mov.origenTarjeta) && Number(mov.importe)!==Number(impAntes)) mov.importeManual = true; }
+    else { const impAntes = mov.importe; Object.assign(mov, data); mov.fechaOk=true; if((mov.origenPrestamo || mov.origenTarjeta) && Number(mov.importe)!==Number(impAntes)) mov.importeManual = true; }
     if(!isNew && mov.tipo==="Gasto" && mov.recurrente && mov.fecha){ const dia=String(parseInt(mov.fecha.split("-")[2])); (state.recurrentes||[]).filter(r=>r.descripcion===mov.descripcion).forEach(r=>{ r.fechaHabitual=dia; r.vencimiento=dia; }); }
     saveState(); closeModal(); renderMovimientos(); if(currentView==="inicio") renderInicio();
     toast("Movimiento guardado.");
@@ -2894,7 +2925,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-02.57";
+const APP_BUILD = "2026-10-02.58";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
