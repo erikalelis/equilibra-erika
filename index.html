@@ -2000,6 +2000,8 @@ window.openCuotaWA=function(){
     // con PDF: se comparte el archivo + el mensaje (en WhatsApp elegís el chat de él y tocás enviar)
     if(cuFile && navigator.canShare && navigator.canShare({files:[cuFile]})){
       ev.preventDefault();
+      try{ navigator.clipboard.writeText(msg); }catch(e){}
+      toast("Mensaje copiado: en el chat, mantené apretado y pegá.");
       navigator.share({files:[cuFile],text:msg}).then(()=>{ closeModal(); renderView(currentView); }).catch(()=>{ renderView(currentView); });
       return;
     }
@@ -2933,7 +2935,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-02.60";
+const APP_BUILD = "2026-10-02.61";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
