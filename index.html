@@ -1863,13 +1863,14 @@ window.openCuotaWA=function(){
    <div class="form-field"><label>WhatsApp (con código de país)</label><input type="tel" id="cu_tel" value="${cf.tel||""}" placeholder="5491112345678"></div></div></div>
    ${cf.tel&&cf.nombre?`<p class="mm-p" style="margin:0 0 8px;font-size:14px">Para: <b>${cf.nombre}</b> · <a href="#" id="cu_cambiar" style="color:var(--petrol-700)">cambiar</a></p>`:""}
    <div class="modal-actions" style="margin-top:12px"><a class="btn btn-primary" id="cu_wa" href="#" target="_blank" rel="noopener" style="flex:1;text-align:center;text-decoration:none">Enviar por WhatsApp</a><button class="btn" onclick="closeModal()">Cerrar</button></div>`;
+  let cuFile=null;
   const $=id=>document.getElementById(id), num=id=>Number($(id).value)||0;
-  const calc=()=>{ const tot=num("cu_tot"),pct=num("cu_pct")||50,mit=Math.round(tot*pct/100); $("cu_res").innerHTML=tot?`Total <b>${fmtMoney(tot)}</b> · A pagar (${pct}%): <b>${fmtMoney(mit)}</b> · ${mes}`:"Elegí el PDF y la app calcula todo."; const nom=($("cu_nom")?$("cu_nom").value.trim():"")||cf.nombre||"[nombre]"; $("cu_msg").textContent=tot?`¡Hola ${nom}! Te paso la cuota referente a ${mes}.\nTotal de la cuota: ${fmtMoney(tot)}\nA pagar (${pct}%): ${fmtMoney(mit)}\n¡Gracias! 🙏`:"Se arma solo cuando elijas el PDF."; return {tot,pct,mit,nom}; };
+  const calc=()=>{ const tot=num("cu_tot"),pct=num("cu_pct")||50,mit=Math.round(tot*pct/100); $("cu_res").innerHTML=tot?`Total <b>${fmtMoney(tot)}</b> · A pagar (${pct}%): <b>${fmtMoney(mit)}</b> · ${mes}`:"Elegí el PDF y la app calcula todo."; const nom=($("cu_nom")?$("cu_nom").value.trim():"")||cf.nombre||"[nombre]"; $("cu_msg").textContent=tot?`Hola ${nom}, espero que te encuentres bien. Ahí abajo te paso la cuota referente a ${mes}.\n\nTotal de la cuota: ${fmtMoney(tot)}\nA pagar (${pct}%): ${fmtMoney(mit)}\n\n¡Gracias! 🙏`:"Se arma solo cuando elijas el PDF."; return {tot,pct,mit,nom}; };
   const aviso=()=>{ const e=state.movimientos.find(m=>m.tipo==="Ingreso"&&m.categoria==="Cuota escuela"&&m.mesRef===mes&&m.anio===anioC&&m.estado==="Pagado"); $("cu_lbl").textContent=e?"Mensaje que se va a enviar (ojo: "+mes+" ya figura como pagada)":"Mensaje que se va a enviar"; };
   ["cu_tot","cu_pct","cu_nom"].forEach(i=>{ if($(i)) $(i).oninput=calc; }); calc();
   if($("cu_cambiar")) $("cu_cambiar").onclick=(e)=>{e.preventDefault(); $("cu_datos").style.display="block";};
   $("cu_file").onchange=async()=>{
-    const f=$("cu_file").files[0]; if(!f) return;
+    const f=$("cu_file").files[0]; if(!f) return; cuFile=f; $("cu_wa").textContent="Enviar PDF + mensaje por WhatsApp";
     if(!/pdf/i.test(f.type)&&!/\.pdf$/i.test(f.name)){ $("cu_estado").textContent="Eso es una imagen: todavía no la puedo leer sola. Escribí el total abajo."; return; }
     $("cu_estado").textContent="Leyendo el PDF…";
     try{
@@ -1892,7 +1893,13 @@ window.openCuotaWA=function(){
     if(ing){ if(ing.estado!=="Pagado") ing.importe=mit; ing.observaciones="Cuota total "+tot; }
     else state.movimientos.push({id:crypto.randomUUID(),fecha:f,mesRef:mes,anio:anioC,tipo:"Ingreso",categoria:"Cuota escuela",subcategoria:"",descripcion:"Cuota escuela ("+pct+"%)",importe:mit,medioPago:"Transferencia",estado:"Pendiente",observaciones:"Cuota total "+tot,recurrente:false});
     saveState();
-    const msg=`¡Hola ${cf.nombre}! Te paso la cuota referente a ${mes}.\nTotal de la cuota: ${fmtMoney(tot)}\nA pagar (${pct}%): ${fmtMoney(mit)}\n¡Gracias! 🙏`;
+    const msg=`Hola ${cf.nombre}, espero que te encuentres bien. Ahí abajo te paso la cuota referente a ${mes}.\n\nTotal de la cuota: ${fmtMoney(tot)}\nA pagar (${pct}%): ${fmtMoney(mit)}\n\n¡Gracias! 🙏`;
+    // con PDF: se comparte el archivo + el mensaje (en WhatsApp elegís el chat de él y tocás enviar)
+    if(cuFile && navigator.canShare && navigator.canShare({files:[cuFile]})){
+      ev.preventDefault();
+      navigator.share({files:[cuFile],text:msg}).then(()=>{ closeModal(); renderView(currentView); }).catch(()=>{ renderView(currentView); });
+      return;
+    }
     $("cu_wa").href="https://api.whatsapp.com/send?phone="+normTelWA(cf.tel)+"&text="+encodeURIComponent(msg);
     setTimeout(()=>{ closeModal(); renderView(currentView); },400);   // WhatsApp abre su chat con el mensaje escrito; vos solo tocás enviar
   };
@@ -2793,7 +2800,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-02.51";
+const APP_BUILD = "2026-10-02.52";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
