@@ -1702,11 +1702,11 @@ function renderAlimentos(){
   const todos=state.movimientos.filter(m=>m.tipo==="Ingreso"&&m.categoria==="Alimentos");
   let html=`<div class="mm-tit">🧸 Alimentos (pensión)</div>`;
   if(!todos.length){
-    html+=`<p class="mm-p" style="margin-bottom:12px">Llevá el control de lo que te pagan de pensión, mes a mes: cuánto y qué día. Se repite solo todos los meses y vos marcás cuando llega.</p><button class="btn btn-primary" style="width:100%" onclick="openAlimPago()">+ Registrar el primer pago</button>`;
+    html+=`<p class="mm-p" style="margin-bottom:12px">Llevá el control de lo que te pagan de pensión, mes a mes: cuánto y qué día. Se repite solo todos los meses y vos marcás cuando llega.</p><button class="btn btn-primary" style="width:100%" onclick="openAlimPago()">+ Registrar el primer pago</button><button class="btn" style="width:100%;margin-top:8px" onclick="openAlimImport()">Cargar varios pagos juntos</button>`;
     el.innerHTML=html; return;
   }
   let cur={mes:currentMes,anio:currentAnio}, filas="";
-  for(let i=0;i<6;i++){
+  for(let i=0;i<MESES.indexOf(currentMes)+1;i++){
     const ms=alimMovs(cur.mes,cur.anio), rec=ms.filter(m=>m.estado==="Pagado"), pend=ms.filter(m=>m.estado!=="Pagado");
     const tr=rec.reduce((a,m)=>a+Number(m.importe||0),0);
     let chip, det="";
@@ -1717,9 +1717,32 @@ function renderAlimentos(){
     cur=mesAnterior(cur.mes,cur.anio);
   }
   const anio=todos.filter(m=>m.estado==="Pagado"&&m.anio===currentAnio).reduce((a,m)=>a+Number(m.importe||0),0);
-  html+=`<div class="al-tot">Recibido en ${currentAnio}: <b>${fmtMoney(anio)}</b></div>${filas}<button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="openAlimPago()">+ Registrar pago recibido</button>`;
+  html+=`<div class="al-tot">Recibido en ${currentAnio}: <b>${fmtMoney(anio)}</b></div>${filas}<button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="openAlimPago()">+ Registrar pago recibido</button><button class="btn" style="width:100%;margin-top:8px" onclick="openAlimImport()">Cargar varios pagos juntos</button>`;
   el.innerHTML=html;
 }
+window.openAlimImport=function(){
+  document.getElementById("modalBody").innerHTML=`<h2>Cargar varios pagos</h2>
+   <p class="mm-p" style="margin:0 0 10px">Pegá un pago por línea: <b>día/mes/año importe</b> (y si querés una nota al final). Ejemplo:<br><span style="color:var(--text-muted)">5/1/2026 510934,65 Pensión y aguinaldo</span></p>
+   <textarea id="al_txt" rows="9" style="width:100%;font-size:15px;padding:10px;border-radius:12px;border:1px solid var(--border);font-family:inherit" placeholder="5/1/2026 510934,65"></textarea>
+   <div class="modal-actions" style="margin-top:14px"><button class="btn btn-primary" id="al_imp_ok">Importar</button><button class="btn" onclick="closeModal()">Cancelar</button></div>`;
+  document.getElementById("al_imp_ok").onclick=()=>{
+    let n=0, dup=0, mal=0;
+    document.getElementById("al_txt").value.split(/\n/).forEach(l=>{
+      l=l.trim(); if(!l) return;
+      const r=l.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+\$?\s*([\d.,]+)\s*(.*)$/);
+      if(!r){ mal++; return; }
+      const imp=parseImporteAR(r[4]); const mi=parseInt(r[2]);
+      if(!(imp>0)||mi<1||mi>12){ mal++; return; }
+      const f=`${r[3]}-${pad2(mi)}-${pad2(parseInt(r[1]))}`;
+      if(state.movimientos.some(m=>m.tipo==="Ingreso"&&m.categoria==="Alimentos"&&m.fecha===f&&Number(m.importe)===imp)){ dup++; return; }
+      state.movimientos.push({id:crypto.randomUUID(),fecha:f,mesRef:MESES[mi-1],anio:parseInt(r[3]),tipo:"Ingreso",categoria:"Alimentos",subcategoria:"",descripcion:"Alimentos (pensión)",importe:imp,medioPago:"Transferencia",estado:"Pagado",observaciones:r[5]||"",recurrente:false});
+      n++;
+    });
+    saveState(); closeModal(); renderView(currentView);
+    toast(`Cargados ${n} pago(s)`+(dup?`, ${dup} ya estaban`:"")+(mal?`, ${mal} línea(s) no se entendieron`:"")+".");
+  };
+  openModal();
+};
 window.openAlimMes=function(mes,anio){
   window._alimAbierto={mes,anio};
   const ms=alimMovs(mes,anio);
@@ -2576,7 +2599,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-01.36";
+const APP_BUILD = "2026-10-01.37";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
