@@ -1145,7 +1145,6 @@ function openMasSheet(){
     <div class="mas-lista">${items}</div>
     <h3 class="mas-titulo">Tus datos</h3>
     <div class="mas-lista">
-      <button class="mas-item" id="masOpciones"><strong>Opciones de financiamiento</strong><span>Crédito disponible que podés usar si te falta plata.</span></button>
       <button class="mas-item" id="masBackup"><strong>Guardar respaldo</strong><span>Descarga una copia de todo lo que cargaste.</span></button>
       <button class="mas-item" id="masRestore"><strong>Restaurar respaldo</strong><span>Trae tus datos desde un archivo guardado.</span></button>
       <button class="mas-item" id="masCopias"><strong>Copias automáticas</strong><span>Volvé a cómo estaba tu app en días anteriores.</span></button>
@@ -1159,7 +1158,6 @@ function openMasSheet(){
   document.querySelectorAll('[data-mas]').forEach(btn=>{
     btn.onclick = ()=>{ closeModal(); switchView(MENU.find(m=>m.id===btn.dataset.mas)); };
   });
-  document.getElementById("masOpciones").onclick = ()=>{ closeModal(); openOpcionesModal(); };
   document.getElementById("masBackup").onclick = ()=>{ closeModal(); document.getElementById("btnBackup").click(); };
   document.getElementById("masRestore").onclick = ()=>{ closeModal(); document.getElementById("btnRestore").click(); };
   document.getElementById("masCopias").onclick = ()=>{ closeModal(); abrirCopias(); };
@@ -2389,7 +2387,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-01.18";
+const APP_BUILD = "2026-10-01.19";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
