@@ -1875,7 +1875,7 @@ window.openCuotaWA=function(){
   $("cu_wa").onclick=(ev)=>{
     const {tot,pct,mit}=calc();
     if(!tot){ ev.preventDefault(); toast("Falta el total de la cuota."); return; }
-    if($("cu_datos").style.display!=="none"){ cf.nombre=$("cu_nom").value.trim(); cf.tel=$("cu_tel").value.replace(/[^0-9]/g,""); }
+    if($("cu_datos").style.display!=="none"){ cf.nombre=$("cu_nom").value.trim(); cf.tel=normTelWA($("cu_tel").value); }
     if(!cf.tel||!cf.nombre){ ev.preventDefault(); toast("Poné el nombre y el WhatsApp de él (una sola vez)."); return; }
     cf.pct=pct;
     // ingreso automático: la mitad que te tiene que pagar
@@ -1885,7 +1885,7 @@ window.openCuotaWA=function(){
     else state.movimientos.push({id:crypto.randomUUID(),fecha:f,mesRef:mes,anio:anioC,tipo:"Ingreso",categoria:"Cuota escuela",subcategoria:"",descripcion:"Cuota escuela ("+pct+"%)",importe:mit,medioPago:"Transferencia",estado:"Pendiente",observaciones:"Cuota total "+tot,recurrente:false});
     saveState();
     const msg=`¡Hola ${cf.nombre}! Te paso la cuota referente a ${mes}.\nTotal de la cuota: ${fmtMoney(tot)}\nA pagar (${pct}%): ${fmtMoney(mit)}\n¡Gracias! 🙏`;
-    $("cu_wa").href="https://api.whatsapp.com/send?phone="+cf.tel+"&text="+encodeURIComponent(msg);
+    $("cu_wa").href="https://api.whatsapp.com/send?phone="+normTelWA(cf.tel)+"&text="+encodeURIComponent(msg);
     setTimeout(()=>{ closeModal(); renderView(currentView); },400);   // WhatsApp abre su chat con el mensaje escrito; vos solo tocás enviar
   };
   openModal();
@@ -2785,7 +2785,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-02.49";
+const APP_BUILD = "2026-10-02.50";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
