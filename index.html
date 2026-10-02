@@ -1017,7 +1017,8 @@ function movCard(m){
   const ing = m.tipo==="Ingreso", hecho = m.estado==="Pagado";
   const dia = m.fecha ? m.fecha.split("-")[2] : "—";
   const txtBtn = ing ? (hecho?"✓ Cobrado":"Por cobrar") : (hecho?"✓ Pagado":"Por pagar");
-  const meta = ing ? `${m.categoria} · día ${dia}` : `${m.categoria} · vence día ${dia}`;
+  const conDia = m.origenPrestamo || m.origenTarjeta || m.recurrente; // solo si el día es real, no el 01 por defecto
+  const meta = !conDia ? `${m.categoria}` : (ing ? `${m.categoria} · día ${dia}` : `${m.categoria} · vence día ${dia}`);
   return `<div class="mv-item${hecho?" hecho":""}">
     <div class="mv-l"><div class="mv-n">${m.descripcion}</div><div class="mv-m">${meta}</div>
       <button class="mv-bt ${hecho?"ok":"por"}" onclick="togglePagado('${m.id}')">${txtBtn}</button></div>
@@ -2386,7 +2387,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-01.16";
+const APP_BUILD = "2026-10-01.17";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
