@@ -121,9 +121,10 @@ header.topbar{
 }
 .topbar-left h1{font-size:22px; margin:0; color:var(--petrol-800);}
 [data-theme="dark"] .topbar-left h1{color:#EAF3F4;}
-body[data-view="inicio"] .ic-balance, body[data-view="inicio"] #viewTitle{display:none}
-body[data-view="inicio"] .topbar-left .sub{font-family:var(--font-display);font-size:27px;font-weight:700;line-height:1.1;margin-top:0;letter-spacing:-.3px;background:linear-gradient(90deg,#0F3D47 0%,#2E8F97 70%,#E8B84B 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 3px rgba(20,83,102,.25))}
-body[data-view="inicio"] .topbar-left .sub::after{content:"";display:block;width:54px;height:4px;border-radius:99px;background:linear-gradient(90deg,#E8B84B,#F2CB63);margin-top:6px}
+.ic-balance{display:none}
+body .topbar-left h1,body .topbar-left .sub{font-family:var(--font-display);font-size:27px;font-weight:700;line-height:1.1;margin:0;letter-spacing:-.3px;background:linear-gradient(90deg,#0F3D47 0%,#2E8F97 70%,#E8B84B 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 3px rgba(20,83,102,.25))}
+body:not([data-view="inicio"]) .topbar-left .sub{font-family:inherit;font-size:15px;font-weight:400;letter-spacing:0;background:none;color:var(--text-muted);-webkit-background-clip:border-box;background-clip:border-box;filter:none;margin-top:3px}
+body[data-view="inicio"] #viewTitle{display:none}
 .topbar-left .sub{font-size:15px; color:var(--text-muted); margin-top:1px;}
 .topbar-right{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
 .period-select{display:flex; gap:6px;}
@@ -2792,7 +2793,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-02.50";
+const APP_BUILD = "2026-10-02.51";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
