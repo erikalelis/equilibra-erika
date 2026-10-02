@@ -282,7 +282,8 @@ main.content{padding:18px 16px calc(96px + env(safe-area-inset-bottom,0px)) 16px
 
 .ac-total{background:#E6F4EE;border-radius:12px;padding:10px 12px;margin:12px 0;font-size:15px}
 .cu-pdf{display:block;text-align:center;padding:18px;border:2px dashed var(--petrol-700,#145366);border-radius:16px;font-size:17px;font-weight:700;color:var(--petrol-700,#145366);cursor:pointer;background:#f4f9fa}
-.cu-cand{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
+.cu-lbl{font-size:13.5px;color:var(--text-muted);margin:10px 0 4px}
+.cu-msg{white-space:pre-wrap;background:#E7F5EC;border:1px solid #BFE3CC;border-radius:14px 14px 14px 4px;padding:12px 14px;font-size:15.5px;line-height:1.45}
 .al-tot{font-size:15.5px;margin-bottom:10px}
 .al-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 4px;border-top:1px solid var(--border);cursor:pointer}
 .al-m{font-size:16.5px;font-weight:600}.al-d{font-size:13.5px;color:var(--text-muted);margin-top:2px}
@@ -1837,10 +1838,10 @@ async function textoDePdf(file, avisar){
   }
   if(out.replace(/\s/g,"").length>=30) return out;
   if(avisar) avisar("Es una factura escaneada: la estoy leyendo con la cámara de la app (puede tardar un poquito)…");
-  const vp=pg1.getViewport({scale:2}), cv=document.createElement("canvas"); cv.width=vp.width; cv.height=vp.height;
+  const vp=pg1.getViewport({scale:1.8}), cv=document.createElement("canvas"); cv.width=vp.width; cv.height=vp.height;
   await pg1.render({canvasContext:cv.getContext("2d"),viewport:vp}).promise;
   if(!window.Tesseract) await cargarScript("https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js");
-  const res=await window.Tesseract.recognize(cv,"eng");
+  const res=await window.Tesseract.recognize(cv,"eng",{logger:m=>{ if(avisar&&m.status==="recognizing text") avisar("Leyendo la factura… "+Math.round(m.progress*100)+"%"); }});
   return res.data.text||"";
 }
 window.openCuotaWA=function(){
@@ -1851,15 +1852,16 @@ window.openCuotaWA=function(){
    <div id="cu_estado" class="mm-p" style="margin:10px 0"></div>
    <div class="form-grid"><div class="form-field"><label>Total de la cuota</label><input type="number" inputmode="numeric" id="cu_tot" placeholder="0"></div>
    <div class="form-field"><label>Su parte (%)</label><input type="number" inputmode="numeric" id="cu_pct" value="${cf.pct??50}"></div></div>
-   <div id="cu_cand" class="cu-cand"></div>
    <div class="ac-total" id="cu_res"></div>
+   <div class="cu-lbl" id="cu_lbl">Mensaje que se va a enviar</div><div class="cu-msg" id="cu_msg"></div>
    <div id="cu_datos" ${cf.tel&&cf.nombre?'style="display:none"':""}><div class="form-grid"><div class="form-field"><label>Nombre de él</label><input id="cu_nom" value="${cf.nombre||""}"></div>
    <div class="form-field"><label>WhatsApp (con código de país)</label><input type="tel" id="cu_tel" value="${cf.tel||""}" placeholder="5491112345678"></div></div></div>
    ${cf.tel&&cf.nombre?`<p class="mm-p" style="margin:0 0 8px;font-size:14px">Para: <b>${cf.nombre}</b> · <a href="#" id="cu_cambiar" style="color:var(--petrol-700)">cambiar</a></p>`:""}
-   <div class="modal-actions" style="margin-top:12px"><button class="btn btn-primary" id="cu_wa" style="flex:1">Enviar por WhatsApp</button><button class="btn" onclick="closeModal()">Cerrar</button></div>`;
+   <div class="modal-actions" style="margin-top:12px"><a class="btn btn-primary" id="cu_wa" href="#" target="_blank" rel="noopener" style="flex:1;text-align:center;text-decoration:none">Enviar por WhatsApp</a><button class="btn" onclick="closeModal()">Cerrar</button></div>`;
   const $=id=>document.getElementById(id), num=id=>Number($(id).value)||0;
-  const calc=()=>{ const tot=num("cu_tot"),pct=num("cu_pct")||50,mit=Math.round(tot*pct/100); $("cu_res").innerHTML=tot?`Total <b>${fmtMoney(tot)}</b> · A pagar (${pct}%): <b>${fmtMoney(mit)}</b> · ${mes}`:"Elegí el PDF y la app calcula todo."; return {tot,pct,mit}; };
-  ["cu_tot","cu_pct"].forEach(i=>$(i).oninput=calc); calc();
+  const calc=()=>{ const tot=num("cu_tot"),pct=num("cu_pct")||50,mit=Math.round(tot*pct/100); $("cu_res").innerHTML=tot?`Total <b>${fmtMoney(tot)}</b> · A pagar (${pct}%): <b>${fmtMoney(mit)}</b> · ${mes}`:"Elegí el PDF y la app calcula todo."; const nom=($("cu_nom")?$("cu_nom").value.trim():"")||cf.nombre||"[nombre]"; $("cu_msg").textContent=tot?`¡Hola ${nom}! Te paso la cuota referente a ${mes}.\nTotal de la cuota: ${fmtMoney(tot)}\nA pagar (${pct}%): ${fmtMoney(mit)}\n¡Gracias! 🙏`:"Se arma solo cuando elijas el PDF."; return {tot,pct,mit,nom}; };
+  const aviso=()=>{ const e=state.movimientos.find(m=>m.tipo==="Ingreso"&&m.categoria==="Cuota escuela"&&m.mesRef===mes&&m.anio===anioC&&m.estado==="Pagado"); $("cu_lbl").textContent=e?"Mensaje que se va a enviar (ojo: "+mes+" ya figura como pagada)":"Mensaje que se va a enviar"; };
+  ["cu_tot","cu_pct","cu_nom"].forEach(i=>{ if($(i)) $(i).oninput=calc; }); calc();
   if($("cu_cambiar")) $("cu_cambiar").onclick=(e)=>{e.preventDefault(); $("cu_datos").style.display="block";};
   $("cu_file").onchange=async()=>{
     const f=$("cu_file").files[0]; if(!f) return;
@@ -1868,29 +1870,26 @@ window.openCuotaWA=function(){
     try{
       const r=detectarCuota(await textoDePdf(f,m=>{$("cu_estado").textContent=m;}));
       if(r.mes){ mes=r.mes; } if(r.anio){ anioC=r.anio; }
-      if(r.total){ $("cu_tot").value=r.total; $("cu_estado").textContent="Listo, leí la cuota de "+mes+". Si el total no es ese, tocá el correcto:"; }
+      if(r.total){ $("cu_tot").value=r.total; $("cu_estado").textContent="Listo, leí la cuota de "+mes+"."; }
       else $("cu_estado").textContent="No encontré el total en el PDF. Escribilo abajo.";
-      $("cu_cand").innerHTML=r.candidatos.length>1?r.candidatos.map(v=>`<button type="button" class="btn" data-v="${v}">${fmtMoney(v)}</button>`).join(""):"";
-      $("cu_cand").querySelectorAll("button").forEach(b=>b.onclick=()=>{ $("cu_tot").value=b.dataset.v; calc(); });
-      calc();
+      calc(); aviso();
     }catch(e){ $("cu_estado").textContent="No pude leer el PDF (¿hay internet?). Escribí el total abajo."; }
   };
-  $("cu_wa").onclick=()=>{
+  $("cu_wa").onclick=(ev)=>{
     const {tot,pct,mit}=calc();
-    if(!tot){ toast("Falta el total de la cuota."); return; }
+    if(!tot){ ev.preventDefault(); toast("Falta el total de la cuota."); return; }
     if($("cu_datos").style.display!=="none"){ cf.nombre=$("cu_nom").value.trim(); cf.tel=$("cu_tel").value.replace(/[^0-9]/g,""); }
-    if(!cf.tel||!cf.nombre){ toast("Poné el nombre y el WhatsApp de él (una sola vez)."); return; }
+    if(!cf.tel||!cf.nombre){ ev.preventDefault(); toast("Poné el nombre y el WhatsApp de él (una sola vez)."); return; }
     cf.pct=pct;
     // ingreso automático: la mitad que te tiene que pagar
     const mi=MESES.indexOf(mes)+1, f=`${anioC}-${pad2(mi)}-10`;
     let ing=state.movimientos.find(m=>m.tipo==="Ingreso"&&m.categoria==="Cuota escuela"&&m.mesRef===mes&&m.anio===anioC);
-    if(ing&&ing.estado==="Pagado"&&!confirm("La cuota de "+mes+" ya figura como pagada. ¿Mandar el mensaje igual?")) return;
     if(ing){ if(ing.estado!=="Pagado") ing.importe=mit; ing.observaciones="Cuota total "+tot; }
     else state.movimientos.push({id:crypto.randomUUID(),fecha:f,mesRef:mes,anio:anioC,tipo:"Ingreso",categoria:"Cuota escuela",subcategoria:"",descripcion:"Cuota escuela ("+pct+"%)",importe:mit,medioPago:"Transferencia",estado:"Pendiente",observaciones:"Cuota total "+tot,recurrente:false});
     saveState();
     const msg=`¡Hola ${cf.nombre}! Te paso la cuota referente a ${mes}.\nTotal de la cuota: ${fmtMoney(tot)}\nA pagar (${pct}%): ${fmtMoney(mit)}\n¡Gracias! 🙏`;
-    closeModal(); renderView(currentView);
-    window.open("https://wa.me/"+cf.tel+"?text="+encodeURIComponent(msg),"_blank");
+    $("cu_wa").href="https://api.whatsapp.com/send?phone="+cf.tel+"&text="+encodeURIComponent(msg);
+    setTimeout(()=>{ closeModal(); renderView(currentView); },400);   // WhatsApp abre su chat con el mensaje escrito; vos solo tocás enviar
   };
   openModal();
 };
@@ -2790,7 +2789,7 @@ document.getElementById("btnMoreMenu").onclick = ()=>{
 
 /* ===================== CONFIABILIDAD ===================== */
 const APP_VERSION = "Equilibra v4.1 · 30/09/2026";
-const APP_BUILD = "2026-10-02.46";
+const APP_BUILD = "2026-10-02.47";
 function diasDesdeRespaldo(){ if(!state.ultimoRespaldo) return null; return Math.floor((Date.now()-new Date(state.ultimoRespaldo).getTime())/86400000); }
 function notaRespaldo(){
   const d = diasDesdeRespaldo();
